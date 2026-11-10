@@ -18,6 +18,8 @@ from collections import Counter, OrderedDict, defaultdict
 
 import openpyxl
 
+from . import health as health_mod
+
 # openpyxl warns about Excel's Data Validation extension on every load.
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
@@ -187,13 +189,28 @@ def find_label_value(rows, label):
     return None
 
 
-def build_snapshot(path, raw_dir=None):
+def build_snapshot(path, raw_dir=None, baseline="default"):
     data = read_bytes_with_retry(path)
     # Two views of the same bytes: saved values, and the formulas themselves.
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True, read_only=True)
     wbf = openpyxl.load_workbook(io.BytesIO(data), data_only=False, read_only=True)
     try:
-        return _build(wb, wbf, path, raw_dir)
+        snap = _build(wb, wbf, path, raw_dir)
+        if baseline == "default":
+            baseline = health_mod.load_baseline()
+        try:
+            report = health_mod.check(wbf, data, baseline)
+        except Exception as e:  # never let the health check take the dashboard down
+            report = {"available": False, "error": f"{type(e).__name__}: {e}"}
+        snap["health"] = report
+        if report.get("problems"):
+            n = len(report["problems"])
+            snap["attention"].append({
+                "level": "serious" if any(p["level"] == "serious" for p in report["problems"]) else "warning",
+                "kind": "Workbook health", "asset_id": None,
+                "text": f"{n} problem{'s' if n != 1 else ''} with formulas, drop-downs or shading rules. "
+                        "See Workbook health on the Data tab."})
+        return snap
     finally:
         wb.close()
         wbf.close()
@@ -420,11 +437,13 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
                                             "platform", "url", "listing_notes", "has_listing_row", "counts")}
     for it in items:
         aid, serial = it.get("Asset ID"), it.get("Serial")
-        add_unit("Hardware/Other", [_uid(aid), _uid(serial)],
+        rec = add_unit("Hardware", [_uid(aid), _uid(serial)],
                  {"id": str(aid) if aid is not None else (str(serial) if serial is not None else None),
                   "serial": str(serial) if serial is not None else None,
                   "type": it.get("Type"), "model": it.get("Model"), "detail": it.get("Key spec"),
                   "in_computers": False})
+        it["_listing"] = {k: rec[k] for k in ("status", "listing_status", "asking", "date_listed",
+                                              "platform", "url", "listing_notes", "has_listing_row", "counts")}
 
     # Listings rows that match no machine or item.
     for key, (row_no, r) in by_id.items():
@@ -448,16 +467,16 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
     status_counts += [{"label": s, "count": n} for s, n in counts.items() if s not in STATUS_ORDER]
     active = [u for u in real if u["status"] in ACTIVE_LISTING]
     # The same counts split by kind: machines (Computers/Master tabs) and
-    # hardware/other (Items tab).
+    # hardware (Items tab).
     kind_counts = {k: Counter(u["status"] for u in real if u["kind"] == k)
-                   for k in ("Computer", "Hardware/Other")}
+                   for k in ("Computer", "Hardware")}
     for row in status_counts:
         row["machines"] = kind_counts["Computer"].get(row["label"], 0)
-        row["other"] = kind_counts["Hardware/Other"].get(row["label"], 0)
+        row["other"] = kind_counts["Hardware"].get(row["label"], 0)
 
     def split(status):
         return {"machines": kind_counts["Computer"].get(status, 0),
-                "other": kind_counts["Hardware/Other"].get(status, 0)}
+                "other": kind_counts["Hardware"].get(status, 0)}
     summary = {
         "present": True,
         "rows": len(listing_rows),
@@ -468,9 +487,9 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
         "needs_listed": counts.get("Needs listed", 0),
         "by_status": {s: split(s) for s in STATUS_ORDER},
         "active_split": {"machines": sum(1 for u in active if u["kind"] == "Computer"),
-                         "other": sum(1 for u in active if u["kind"] == "Hardware/Other")},
+                         "other": sum(1 for u in active if u["kind"] == "Hardware")},
         "totals_split": {"machines": sum(kind_counts["Computer"].values()),
-                         "other": sum(kind_counts["Hardware/Other"].values())},
+                         "other": sum(kind_counts["Hardware"].values())},
         "active_priced": len(counted),
         "active_unpriced": sum(1 for u in active if u["asking"] is None),
         "asking_total": asking_total,
@@ -517,10 +536,11 @@ def _build(wb, wbf, path, raw_dir):
         rows = ws.iter_rows(values_only=True)
         header = [clean(h) for h in next(rows, [])]
         item_cols = [h for h in header if h]
-        for r in rows:
+        for row_no, r in enumerate(rows, start=2):
             rec = {h: clean(r[i]) if i < len(r) else None
                    for i, h in enumerate(header) if h}
             if any(v is not None for v in rec.values()):
+                rec["_row"] = row_no
                 items.append(rec)
 
     ws = _sheet(wb, "Bulk", warn)
@@ -739,6 +759,29 @@ def _build(wb, wbf, path, raw_dir):
     else:
         listing_units, listing_attention = [], []
         listings = {"present": False}
+    # ---- Hardware (Items tab) -----------------------------------------------
+    sale_by_upper_all = {}
+    for s in sales:
+        sale_by_upper_all.setdefault(_uid(s["asset_id"]), s)
+    hardware = []
+    for it in items:
+        aid, serial = it.get("Asset ID"), it.get("Serial")
+        sale = sale_by_upper_all.get(_uid(aid)) or sale_by_upper_all.get(_uid(serial))
+        hid = str(aid) if aid is not None else (str(serial) if serial is not None else None)
+        hardware.append({
+            "id": hid, "asset_id": aid, "serial": serial,
+            "type": it.get("Type"), "make": it.get("Make"), "model": it.get("Model"),
+            "key_spec": it.get("Key spec"), "condition": it.get("Condition"), "notes": it.get("Notes"),
+            "ram_group": ram_group(it.get("Key spec")) if (it.get("Type") or "").upper() == "RAM" else None,
+            "row": it.get("_row"), "is_sold": sale is not None, "sale": sale,
+            "listing": it.get("_listing"),
+            "extra": {k: v for k, v in it.items() if not k.startswith("_") and k not in
+                      ("Asset ID", "Serial", "Type", "Make", "Model", "Key spec", "Condition", "Notes")},
+        })
+    hw_ids = Counter(h["id"].upper() for h in hardware if h["id"])
+    for h in hardware:
+        h["id_unique"] = bool(h["id"]) and hw_ids[h["id"].upper()] == 1
+
     kpis["net_sales_potential"] = listings.get("net_sales_potential")
     kpis["profit_potential"] = listings.get("profit_potential")
 
@@ -891,7 +934,8 @@ def _build(wb, wbf, path, raw_dir):
         "sales": sales,
         "master": master,
         "master_cols": master_cols,
-        "items": items,
+        "items": [{k: v for k, v in i.items() if not k.startswith("_")} for i in items],
+        "hardware": hardware,
         "item_cols": item_cols,
         "ram_groups": [{"label": k, "count": v} for k, v in Counter(
             ram_group(i.get("Key spec")) for i in items if (i.get("Type") or "").upper() == "RAM"

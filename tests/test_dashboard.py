@@ -214,6 +214,7 @@ def test_real_workbook():
     assert s["meta"]["checks"] and all(c["ok"] for c in s["meta"]["checks"]), s["meta"]["checks"]
     assert not any(a["kind"] == "Saved values out of date" for a in s["attention"])
     assert s["kpis"]["machines_scanned"] > 0
+    assert s["health"]["available"] and s["health"]["ok"], s["health"]["problems"]
     for c in s["computers"]:
         if c["source"] == "scan":
             assert c["scan_files"], c["asset_id"]
@@ -263,13 +264,13 @@ def test_statuses(lsnap):
     assert unit(lsnap, "SER-RAM-1")["status"] == "Needs listed" and not unit(lsnap, "SER-RAM-1")["counts"]
     assert unit(lsnap, "AIO-004")["status"] == "Removed" and not unit(lsnap, "AIO-004")["counts"]
     assert unit(lsnap, "DT-002")["status"] == "Sold" and not unit(lsnap, "DT-002")["has_listing_row"]
-    assert unit(lsnap, "MON-001")["kind"] == "Hardware/Other"
+    assert unit(lsnap, "MON-001")["kind"] == "Hardware"
     counts = {s["label"]: s["count"] for s in lsnap["listings"]["status_counts"]}
     # 6 machines + 4 items; XX-999 matches nothing and is not a unit.
     assert counts == {"Sold": 3, "Pending": 1, "Listed": 3, "Needs listed": 1, "Removed": 1, "On hold": 1}
     assert sum(counts.values()) == 10
     L = lsnap["listings"]
-    # 5 machines + AIO-004 (Master only) = 6 machines; 4 hardware/other items.
+    # 5 machines + AIO-004 (Master only) = 6 machines; 4 hardware items.
     assert L["totals_split"] == {"machines": 6, "other": 4}
     assert L["by_status"]["Sold"] == {"machines": 3, "other": 0}
     assert L["by_status"]["Listed"] == {"machines": 1, "other": 2}     # DT-003; MON-001, SER-RAM-2
@@ -307,3 +308,124 @@ def test_listings_api(tmp_path):
     body = app.test_client().get("/api/data").get_json()
     assert body["listings"]["net_sales_potential"] == 370
     assert body["meta"]["sheets"]["Listings"] == 10
+
+
+# ---- Hardware inventory -----------------------------------------------------
+
+def test_hardware_list(snap):
+    hw = {h["id"]: h for h in snap["hardware"]}
+    assert set(hw) == {"SER-RAM-1", "SER-RAM-2", "MON-001"}       # RAM uses its serial as ID
+    assert hw["MON-001"]["serial"] == "SER-MON-1" and hw["MON-001"]["make"] == "Dell"
+    assert hw["SER-RAM-2"]["ram_group"] == "DIMM 16GB DDR3L ECC"
+    assert hw["MON-001"]["ram_group"] is None
+    assert all(h["id_unique"] and not h["is_sold"] for h in hw.values())
+    assert hw["SER-RAM-1"]["row"] == 2
+    assert "_row" not in snap["items"][0]
+
+
+def test_hardware_sold_by_serial(tmp_path):
+    import openpyxl
+    path = build(str(tmp_path))
+    wb = openpyxl.load_workbook(path)
+    wb["Sales"].append([None, "SER-MON-1", None, None, None, 40, None, None, None, None, None, "eBay"])
+    wb["Sales"]["A5"] = wb["Sales"]["A2"].value
+    wb.save(path)
+    s = build_snapshot(path, None, baseline=None)
+    mon = next(h for h in s["hardware"] if h["id"] == "MON-001")
+    assert mon["is_sold"] and mon["sale"]["price"] == 40
+
+
+def test_hardware_listing_attached(lsnap):
+    mon = next(h for h in lsnap["hardware"] if h["id"] == "MON-001")
+    assert mon["listing"]["status"] == "Listed" and mon["listing"]["asking"] == 40
+
+
+# ---- Workbook health ---------------------------------------------------------
+
+from dashboard import health  # noqa: E402
+
+
+def test_shift_rows():
+    f = '=IF($A2="","",IF(COUNTIF(Sales!$B$2:$B$500,$A2)>0,"SOLD A2",""))'
+    assert health.shift_rows(f, 3) == '=IF($A5="","",IF(COUNTIF(Sales!$B$2:$B$500,$A5)>0,"SOLD A2",""))'
+    assert health.shift_rows("=SUM(C2:C9)+LOG10(4)+B$2", 1) == "=SUM(C3:C10)+LOG10(4)+B$2"
+    assert health.ranges([2, 3, 4, 9, 11, 12]) == "2-4, 9, 11-12"
+
+
+def _health_fixture(tmp_path):
+    """Fixture with formulas filled down, a drop-down and a shading rule, plus its baseline."""
+    import io
+    import openpyxl
+    from openpyxl.formatting.rule import FormulaRule
+    from openpyxl.worksheet.datavalidation import DataValidation
+    path = build(str(tmp_path), listings=True)
+    wb = openpyxl.load_workbook(path)
+    cw = wb["Computers"]
+    for r in range(2, 11):
+        cw[f"Y{r}"] = f'=IF($A{r}="","",IF(COUNTIF(Sales!$B$2:$B$500,$A{r})>0,"SOLD",""))'
+    sd = wb["Selling Dashboard"]
+    sd["B9"] = "=SUM(Sales!$T$2:$T$500)"
+    dv = DataValidation(type="list", formula1="Lists!$B$2:$B$2", allow_blank=True)
+    dv.add("L2:L500")
+    wb["Sales"].add_data_validation(dv)
+    cw.conditional_formatting.add("A2:Y500", FormulaRule(formula=['$Y2="SOLD"']))
+    wb.save(path)
+    data = open(path, "rb").read()
+    wbf = openpyxl.load_workbook(io.BytesIO(data), read_only=True)
+    base = health.make_baseline(wbf, data, [("Computers", "sold", 2, 10)], ["Selling Dashboard"])
+    return path, base
+
+
+def test_health_clean(tmp_path):
+    path, base = _health_fixture(tmp_path)
+    s = build_snapshot(path, None, baseline=base)
+    h = s["health"]
+    assert h["available"] and h["ok"], h["problems"]
+    assert h["checked"] == 9 + 1 + 1 + 1
+    assert not any(a["kind"] == "Workbook health" for a in s["attention"])
+
+
+def test_health_finds_problems(tmp_path):
+    import openpyxl
+    path, base = _health_fixture(tmp_path)
+    wb = openpyxl.load_workbook(path)
+    cw = wb["Computers"]
+    cw["Y4"] = None                    # wiped
+    cw["Y5"] = None
+    cw["Y8"] = '=IF($A8="","","SOLD")'  # edited
+    wb["Selling Dashboard"]["B9"] = 190  # formula typed over
+    wb["Sales"].data_validations.dataValidation = []
+    cw.conditional_formatting = type(cw.conditional_formatting)()
+    wb.save(path)
+    s = build_snapshot(path, None, baseline=base)
+    texts = [p["text"] for p in s["health"]["problems"]]
+    assert any("no formula in row(s) 4-5" in t for t in texts)
+    assert any("differs" in t and "row(s) 8" in t for t in texts)
+    assert any("No formula in B9" in t for t in texts)
+    assert any("drop-down from Lists!$B$2:$B$2 is missing" in t for t in texts)
+    assert any("Shading rule" in t and "missing" in t for t in texts)
+    assert any(a["kind"] == "Workbook health" for a in s["attention"])
+
+
+def test_health_moved_column(tmp_path):
+    import openpyxl
+    path, base = _health_fixture(tmp_path)
+    wb = openpyxl.load_workbook(path)
+    wb["Computers"]["Y1"] = "renamed"
+    wb.save(path)
+    probs = build_snapshot(path, None, baseline=base)["health"]["problems"]
+    assert any("header is 'renamed'" in p["text"] for p in probs)
+
+
+def test_health_without_baseline(fx):
+    s = build_snapshot(*fx, baseline=None)
+    assert s["health"] == {"available": False}
+
+
+def test_bundled_baseline_is_formula_only():
+    import json
+    base = json.load(open(health.BASELINE_PATH))
+    assert set(base) == {"version", "fill_down", "fixed", "data_validations", "conditional_formats",
+                         "defined_names"}
+    for cells in base["fixed"].values():
+        assert all(v.startswith("=") for v in cells.values())

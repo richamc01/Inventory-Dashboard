@@ -9,11 +9,11 @@ This is a read-only web dashboard for the hardware lot. It reads `Hardware Inven
 | Overview | Net sales, how much of the lot cost is recovered, profit or amount still to recover, net sales potential, total profit potential, units sold, average net, machines left, cumulative net vs lot cost, sales by machine type, platform, payment method and model, and a list of rows that need attention |
 | Sales | Every sale with search, filters, sortable columns, totals, multi-machine orders grouped together, and daily totals |
 | Listings | Every machine and item with its listing status (Sold, Pending, Listed, Needs listed, Not listed, Removed), asking price, date listed and platform, plus net sales potential and total profit potential. Search, filters and sortable columns. |
-| Inventory | Every machine, including Master-only machines that were never scanned, with search, filters and sorting. Click a machine to see every scanned field, its Master notes, its sale, and the full scan file split into sections. Every scan for an asset is listed. |
+| Computer Inventory | Every machine, including Master-only machines that were never scanned, with search, filters and sorting. Click a machine to see every scanned field, its Master notes, its sale, and the full scan file split into sections. Every scan for an asset is listed. |
 | Fleet | Breakdowns of unsold or all machines by model, CPU, generation, RAM, Windows 11, TPM, drive, type and status. Also groups identical machines for writing listings. |
-| Other hardware | The Items tab (RAM grouped by kind) and the Bulk tab |
+| Hardware Inventory | Every entry on the Items tab with search, filters (sold, type, condition, listing status) and sortable columns. Click an item for its Items-tab fields, listing and sale. Also items by type, RAM grouped by kind, and the Bulk tab. |
 | Notes | The Master tab and the attention list |
-| Data | File details, warnings, a cross-check of totals against the Selling Dashboard tab, and the Summary and Lists tabs |
+| Data | Workbook health (formulas, drop-downs and shading rules all in place), file details, warnings, a cross-check of totals against the Selling Dashboard tab, and the Summary and Lists tabs |
 
 The page checks every 60 seconds and reloads on its own when the workbook changes.
 
@@ -23,6 +23,11 @@ The page checks every 60 seconds and reloads on its own when the workbook change
 - The Sales tab's calculated columns (Q to X) come from the values Excel saved. If Excel saved no results, the dashboard calculates them itself using the same rules.
 - The Listings tab is optional. Each machine (Computers and Master tabs) and each item (Items tab, matched by Asset ID or Serial) appears once. A unit on the Sales tab is Sold, whatever its Listings row says.
 - **Net sales potential** is the actual net of everything sold plus the asking price of every unsold unit whose listing status is Listed or Pending. No fees or shipping are taken off asking prices. **Total profit potential** is net sales potential minus the lot price. A sold unit counts once, at its sale net, never at its asking price.
+- **Workbook health** (Data tab) compares the workbook with a reference copy in `dashboard/baseline.json`. The reference holds formula text and drop-down and shading definitions only, never cell data. It checks:
+  - Fill-down columns (Computers U to Y, Sales D, E and Q to X, Listings H): every row from 2 to 500 holds row 2's formula with the row numbers shifted
+  - Summary and Selling Dashboard: each formula cell still holds the same formula
+  - Every drop-down and entry rule, the grey sold-row shading rules, and the `SalesAssetIDs` named range
+- After a deliberate change to the workbook's formulas or drop-downs, update the reference copy: `python3 tools/make_baseline.py "Hardware Inventory.xlsx"`, then commit `dashboard/baseline.json`.
 - The **Needs attention** list flags the following:
   - Sales rows whose Check is not OK
   - Machines whose scan status is not OK
@@ -31,6 +36,7 @@ The page checks every 60 seconds and reloads on its own when the workbook change
   - Rows where a formula is missing in Excel
   - Saved values that are out of date
   - Totals that don't match the Selling Dashboard tab
+  - Workbook health problems (one summary line; details on the Data tab)
   - Listings problems: the same ID on two rows (only the first is used), an ID that is not in the inventory, Listed or Pending with no asking price, and a status that is not on the list
 
 ## Install on UnRAID

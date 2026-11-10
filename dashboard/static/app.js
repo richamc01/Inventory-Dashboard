@@ -12,7 +12,7 @@ const state = {
   sales: { q: "", platform: "", type: "", sort: "date", dir: -1 },
   listings: { q: "", status: "", kind: "", sort: "status", dir: 1 },
   fleetScope: "unsold",
-  itemType: "",
+  hw: { q: "", type: "", condition: "", listing: "", sold: "unsold", sort: "id", dir: 1 },
 };
 
 /* ---------------- helpers ---------------- */
@@ -83,7 +83,9 @@ function options(values, selected, allLabel) {
 
 function assetLink(id) {
   if (!id) return "";
-  const known = state.data && state.data.computers.some(c => c.asset_id === id);
+  const d = state.data;
+  const known = d && (d.computers.some(c => c.asset_id === id) ||
+    (d.hardware || []).some(h => h.id_unique && h.id === String(id)));
   return known ? `<a href="#inventory/${encodeURIComponent(id)}" data-asset="${esc(id)}">${esc(id)}</a>` : esc(id);
 }
 
@@ -291,7 +293,7 @@ function viewListings(d) {
     { key: "counts", label: "In potential" }, { key: "listing_notes", label: "Notes" },
   ];
   const body = rows.map(u => {
-    const idCell = u.id ? (u.kind === "Computer" ? assetLink(u.id) : esc(u.id)) : '<span class="dim">no ID</span>';
+    const idCell = u.id ? assetLink(u.id) : '<span class="dim">no ID</span>';
     const inPot = u.status === "Sold" ? `<span class="dim">at sale net</span>` : u.counts ? "Yes" : "";
     return `<tr>
       <td class="nowrap">${idCell}</td><td>${esc(u.kind)}</td><td>${esc(u.type)}</td><td class="nowrap">${esc(u.model)}</td>
@@ -305,7 +307,7 @@ function viewListings(d) {
       <td class="num">${money(counted.reduce((a, u) => a + u.asking, 0))}</td>
       <td class="num">${money(rows.reduce((a, u) => a + (Number(u.sale_net) || 0), 0))}</td><td colspan="4" class="muted small">Asking total counts Listed and Pending only</td></tr></tfoot>` : "";
   const statuses = L.status_counts.map(s => s.label);
-  const split = x => `${x.machines} machine${x.machines === 1 ? "" : "s"}, ${x.other} hardware/other`;
+  const split = x => `${x.machines} machine${x.machines === 1 ? "" : "s"}, ${x.other} hardware`;
   const by = s => (L.by_status && L.by_status[s]) || { machines: 0, other: 0 };
   const num = s => by(s).machines + by(s).other;
   const tiles = `<div class="tiles">
@@ -322,8 +324,8 @@ function viewListings(d) {
   </div>`;
   return `${tiles}
   <div class="grid cols-2" style="margin-top:16px">
-    <div class="card"><h2>Units by listing status</h2>${hbars(L.status_counts.map(s => ({ label: s.label, value: s.count, tip: `${s.label}: ${s.count} unit${s.count === 1 ? "" : "s"}\n${s.machines} machine${s.machines === 1 ? "" : "s"}, ${s.other} hardware/other` })), v => v)}
-      <p class="muted small">Every machine and every Items-tab entry (hardware/other) appears once. Sold comes from the Sales tab and overrides the Listings status.</p></div>
+    <div class="card"><h2>Units by listing status</h2>${hbars(L.status_counts.map(s => ({ label: s.label, value: s.count, tip: `${s.label}: ${s.count} unit${s.count === 1 ? "" : "s"}\n${s.machines} machine${s.machines === 1 ? "" : "s"}, ${s.other} hardware` })), v => v)}
+      <p class="muted small">Every machine and every Items-tab entry (hardware) appears once. Sold comes from the Sales tab and overrides the Listings status.</p></div>
     <div class="card"><h2>How the potential is worked out</h2><dl class="kv">
       <dt>Sold</dt><dd>Actual net from the Sales tab, after fees and shipping: ${money(L.sold_net)}</dd>
       <dt>Listed and Pending</dt><dd>Asking price as entered, no fees or shipping taken off: ${money(L.asking_total)}</dd>
@@ -334,8 +336,8 @@ function viewListings(d) {
     <div class="filters">
       <input type="search" id="l-q" placeholder="Search ID, serial, model, spec, notes…" value="${esc(f.q)}">
       <select id="l-status">${options(statuses, f.status, "Any status")}</select>
-      <select id="l-kind">${options(uniq(all.map(u => u.kind)), f.kind, "Machines and hardware/other")}</select>
-      <span class="count">${rows.length} of ${all.length} units (${all.filter(u => u.kind === "Computer").length} machines, ${all.filter(u => u.kind === "Hardware/Other").length} hardware/other)</span>
+      <select id="l-kind">${options(uniq(all.map(u => u.kind)), f.kind, "Machines and hardware")}</select>
+      <span class="count">${rows.length} of ${all.length} units (${all.filter(u => u.kind === "Computer").length} machines, ${all.filter(u => u.kind === "Hardware").length} hardware)</span>
     </div>
     <div class="table-wrap"><table><thead>${sortHeader(cols, f)}</thead><tbody>${body || `<tr><td colspan="12" class="empty">Nothing matches these filters.</td></tr>`}</tbody>${foot}</table></div>
   </div>`;
@@ -508,24 +510,71 @@ function viewFleet(d) {
     ${gtable}`;
 }
 
+function hardwareRows(d) {
+  const f = state.hw;
+  const q = f.q.trim().toLowerCase();
+  return d.hardware.filter(h =>
+    (!f.type || h.type === f.type) &&
+    (!f.condition || h.condition === f.condition) &&
+    (!f.listing || (h.listing && !h.is_sold ? h.listing.status : "") === f.listing) &&
+    (f.sold === "" || (f.sold === "sold" ? h.is_sold : !h.is_sold)) &&
+    (!q || [h.id, h.serial, h.asset_id, h.type, h.make, h.model, h.key_spec, h.condition, h.notes]
+      .some(v => v !== null && v !== undefined && String(v).toLowerCase().includes(q))));
+}
+
 function viewHardware(d) {
-  const t = state.itemType;
-  const items = d.items.filter(i => !t || i.Type === t);
-  const cols = d.item_cols;
-  const itemTable = d.items.length ? `<div class="table-wrap"><table><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>
-    ${items.map(i => `<tr>${cols.map(c => `<td class="${c === "Notes" ? "wrap" : "nowrap"}">${esc(i[c])}</td>`).join("")}</tr>`).join("")}
-    </tbody></table></div>` : `<div class="empty">No items recorded.</div>`;
+  const f = state.hw;
+  const all = d.hardware;
+  const getter = (h, k) => k === "listing" ? (h.listing && !h.is_sold ? STATUS_RANK[h.listing.status] ?? 9 : null)
+    : k === "asking" ? (h.listing && !h.is_sold ? h.listing.asking : null)
+    : k === "sold_net" ? (h.sale ? h.sale.net : null) : h[k];
+  const rows = applySort(hardwareRows(d).map(h => ({ ...h, asset_id: h.id })), f, getter);
+  const cols = [
+    { key: "id", label: "ID" }, { key: "type", label: "Type" }, { key: "make", label: "Make" },
+    { key: "model", label: "Model" }, { key: "key_spec", label: "Key spec" }, { key: "condition", label: "Condition" },
+    { key: "listing", label: "Listing" }, { key: "asking", label: "Asking", num: true },
+    { key: "sold_net", label: "Sold", num: true }, { key: "notes", label: "Notes" },
+  ];
+  const body = rows.map(h => {
+    const clickable = h.id_unique;
+    const idCell = h.id ? (clickable ? `<a href="#hardware/${encodeURIComponent(h.id)}" data-asset="${esc(h.id)}">${esc(h.id)}</a>` : esc(h.id))
+      : '<span class="dim">no ID</span>';
+    const l = h.listing && !h.is_sold ? h.listing : null;
+    return `<tr${clickable ? ` class="click" data-asset="${esc(h.id)}"` : ""}>
+      <td class="nowrap">${idCell}</td><td>${esc(h.type)}</td><td class="nowrap">${esc(h.make)}</td>
+      <td class="nowrap">${esc(h.model)}</td><td class="nowrap small">${esc(h.key_spec)}</td><td>${esc(h.condition)}</td>
+      <td class="nowrap">${l ? listingBadge(l.status) : ""}</td><td class="num">${l ? money(l.asking) : ""}</td>
+      <td class="nowrap">${h.is_sold ? `<span class="badge sold">Sold${h.sale && h.sale.net !== null ? " · " + money(h.sale.net) : ""}</span>` : ""}</td>
+      <td class="wrap small">${esc(h.notes)}</td></tr>`;
+  }).join("");
+  const scope = all.filter(h => f.sold === "" || (f.sold === "sold" ? h.is_sold : !h.is_sold));
+  const ramScope = scope.filter(h => h.ram_group);
+  const scopeLabel = f.sold === "sold" ? "sold" : f.sold === "unsold" ? "unsold" : "all";
+  const noId = all.filter(h => !h.id).length;
   const bulk = d.bulk.length ? `<div class="table-wrap"><table><thead><tr>${d.bulk_cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>
     ${d.bulk.map(b => `<tr>${d.bulk_cols.map(c => `<td>${esc(b[c])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`
     : `<div class="empty">No bins recorded on the Bulk tab yet.</div>`;
-  return `<div class="grid cols-2">
-    <div class="card"><h2>Items by type</h2>${hbars(countBy(d.items, i => i.Type).sort((a, b) => b.value - a.value), v => v)}</div>
-    <div class="card"><h2>RAM modules by kind</h2>${hbars(d.ram_groups.map(r => ({ label: r.label, value: r.count })), v => v)}
-      <p class="muted small">Grouped from the Key spec column. All modules are listed below.</p></div>
+  return `<div class="card">
+    <div class="filters">
+      <input type="search" id="h-q" placeholder="Search ID, serial, make, model, spec, notes…" value="${esc(f.q)}">
+      <div class="seg" id="h-sold">
+        ${[["unsold", "Unsold"], ["sold", "Sold"], ["", "All"]].map(([v, l]) => `<button type="button" data-v="${v}" class="${f.sold === v ? "on" : ""}">${l}</button>`).join("")}
+      </div>
+      <select id="h-type">${options(uniq(all.map(h => h.type)), f.type, "All types")}</select>
+      <select id="h-condition">${options(uniq(all.map(h => h.condition)), f.condition, "Any condition")}</select>
+      <select id="h-listing">${options(uniq(all.filter(h => h.listing && !h.is_sold).map(h => h.listing.status)), f.listing, "Any listing status")}</select>
+      <button type="button" id="h-reset">Reset</button>
+      <span class="count">${rows.length} of ${all.length} items</span>
+    </div>
+    ${all.length ? `<div class="table-wrap"><table><thead>${sortHeader(cols, f)}</thead><tbody>${body || `<tr><td colspan="10" class="empty">No items match these filters.</td></tr>`}</tbody></table></div>`
+      : `<div class="empty">No items recorded on the Items tab.</div>`}
+    <p class="muted small">From the Items tab. Click a row for its details, listing and sale.${noId ? ` ${noId} item${noId === 1 ? " has" : "s have"} no asset ID or serial, so ${noId === 1 ? "it" : "they"} can't be matched to a sale or listing.` : ""}</p>
   </div>
-  <div class="card"><div class="filters"><h2 style="margin:0">Items tab</h2>
-    <select id="h-type">${options(uniq(d.items.map(i => i.Type)), t, "All types")}</select>
-    <span class="count">${items.length} of ${d.items.length} items</span></div>${itemTable}</div>
+  <div class="grid cols-2">
+    <div class="card"><div class="card-head"><h2>Items by type</h2><span class="muted small">${scopeLabel}</span></div>${hbars(countBy(scope, h => h.type).sort((a, b) => b.value - a.value), v => v)}</div>
+    <div class="card"><div class="card-head"><h2>RAM modules by kind</h2><span class="muted small">${scopeLabel}</span></div>${hbars(countBy(ramScope, h => h.ram_group).sort((a, b) => b.value - a.value), v => v)}
+      <p class="muted small">Grouped from the Key spec column.</p></div>
+  </div>
   <div class="card"><h2>Bulk tab</h2>${bulk}</div>`;
 }
 
@@ -548,8 +597,9 @@ function viewData(d) {
     return isHead ? `<tr><td colspan="2"><strong>${esc(r[0])}</strong></td></tr>`
       : `<tr><td>${esc(r[0])}</td><td class="num">${esc(r.slice(1).filter(v => v !== null).join(" · "))}</td></tr>`;
   }).join("");
+  const health = healthCard(d.health);
   const lists = Object.entries(d.lists).map(([k, v]) => `<tr><td class="nowrap">${esc(k)}</td><td>${esc(v.join(", "))}</td></tr>`).join("");
-  return `<div class="grid cols-2">
+  return `${health}<div class="grid cols-2">
     <div class="card"><h2>Source file</h2><dl class="kv">
       <dt>File</dt><dd>${esc(m.file)}</dd>
       <dt>Last saved</dt><dd>${fmtDateTime(m.mtime)}</dd>
@@ -572,6 +622,22 @@ function viewData(d) {
   </div>`;
 }
 
+function healthCard(h) {
+  if (!h || !h.available) {
+    return `<div class="card"><h2>Workbook health</h2><div class="empty">${statusBadge("warning", "Not checked")} ${esc(h && h.error ? "The check failed: " + h.error : "No reference copy (baseline.json) was found, so formulas and drop-downs were not checked.")}</div></div>`;
+  }
+  const rows = h.sections.map(sct => `<tr><td>${esc(sct.area)}</td><td class="num">${sct.checked.toLocaleString("en-US")}</td>
+    <td>${sct.problems ? statusBadge("serious", `${sct.problems} problem${sct.problems === 1 ? "" : "s"}`) : statusBadge("good", "All in place")}</td></tr>`).join("");
+  const label = { serious: "Problem", warning: "Check" };
+  const probs = h.problems.length ? `<ul class="attn">${h.problems.map(p => `<li>${statusBadge(p.level, label[p.level] || p.level)}
+      <span class="kind">${esc(p.where)}</span><span class="text">${esc(p.text)}</span></li>`).join("")}</ul>` : "";
+  return `<div class="card"><div class="card-head"><h2>Workbook health</h2>
+      <span class="muted small">${h.checked.toLocaleString("en-US")} checks · ${h.ok ? "everything in place" : `${h.problems.length} problem${h.problems.length === 1 ? "" : "s"}`}</span></div>
+    <div class="table-wrap"><table><thead><tr><th>What is checked</th><th class="num">Cells or rules</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${probs}
+    <p class="muted small">Compared with a reference copy of the workbook's formulas, drop-downs and shading rules (formula text only, no data). Fill-down columns must hold the same formula in every row from 2 to 500.</p></div>`;
+}
+
 /* ---------------- drawer ---------------- */
 
 const SCAN_FIELDS = [
@@ -583,10 +649,58 @@ const SCAN_FIELDS = [
   ["problems", "Problems"], ["detail_file", "Scan file"],
 ];
 
+function openHardwareDrawer(h) {
+  state.openAsset = h.id;
+  $("#drawer-title").innerHTML = `<h2>${esc(h.id)} · ${esc([h.make, h.model].filter(Boolean).join(" ") || "Unknown model")}</h2>
+    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+      ${h.is_sold ? `<span class="badge sold">Sold</span>` : `<span class="badge">In stock</span>`}
+      ${h.type ? `<span class="badge">${esc(h.type)}</span>` : ""}
+      ${h.condition ? `<span class="badge">${esc(h.condition)}</span>` : ""}
+    </div>`;
+  const kv = pairs => `<dl class="kv">${pairs.filter(([, v]) => v !== null && v !== undefined && v !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`;
+  let html = "";
+  if (h.notes) html += `<div class="note">${esc(h.notes)}</div>`;
+  html += `<h3>Items tab (row ${esc(h.row)})</h3>` + kv([
+    ["Asset ID", esc(h.asset_id)], ["Serial", esc(h.serial)], ["Type", esc(h.type)], ["Make", esc(h.make)],
+    ["Model", esc(h.model)], ["Key spec", esc(h.key_spec)], ["RAM kind", esc(h.ram_group)], ["Condition", esc(h.condition)],
+    ...Object.entries(h.extra || {}).map(([k, v]) => [k, esc(v)]),
+  ]);
+  if (h.sale) {
+    const s = h.sale;
+    html += `<h3>Sale</h3>` + kv([
+      ["Date", fmtDate(s.date)], ["Order", esc(s.order_id)], ["Price", money(s.price)], ["Fees", money(s.fees)],
+      ["Shipping", money(s.shipping)], ["Net", `<strong>${money(s.net)}</strong>`], ["Platform", esc(s.platform)],
+      ["Payment", esc(s.payment)], ["Buyer", esc(s.buyer)], ["Notes", esc(s.notes)],
+      ["Check", s.check === "OK" ? statusBadge("good", "OK") : statusBadge("serious", s.check)],
+    ]);
+  }
+  html += listingSection(h.listing, h.is_sold);
+  $("#drawer-body").innerHTML = html;
+  $("#drawer-body").scrollTop = 0;
+  $("#drawer").hidden = false;
+  $("#scrim").hidden = false;
+}
+
+function listingSection(l, isSold) {
+  if (!l || (!l.has_listing_row && isSold)) return "";
+  const kv = pairs => `<dl class="kv">${pairs.filter(([, v]) => v !== null && v !== undefined && v !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`;
+  return `<h3>Listing</h3>` + (l.has_listing_row ? kv([
+    ["Status", listingBadge(l.status)], ["Status on the Listings tab", esc(l.listing_status)],
+    ["Asking price", money(l.asking)], ["Listed on", fmtDate(l.date_listed)], ["Platform", esc(l.platform)],
+    ["Listing", l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.url)}</a>` : ""],
+    ["Notes", esc(l.listing_notes)],
+    ["In the potential", l.status === "Sold" ? "At its sale net" : l.counts ? "Yes, at the asking price" : "No"],
+  ]) : `<div class="empty">Not on the Listings tab, so it shows as Not listed.</div>`);
+}
+
 function openDrawer(id) {
   const d = state.data;
   const c = d && d.computers.find(x => x.asset_id === id);
-  if (!c) { closeDrawer(); return; }
+  if (!c) {
+    const h = d && (d.hardware || []).find(x => x.id_unique && x.id === id);
+    if (h) openHardwareDrawer(h); else closeDrawer();
+    return;
+  }
   state.openAsset = id;
   $("#drawer-title").innerHTML = `<h2>${esc(c.asset_id)} · ${esc(c.model || "Unknown model")}</h2>
     <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
@@ -614,16 +728,7 @@ function openDrawer(id) {
       ["Notes", esc(s.notes)], ["Check", s.check === "OK" ? statusBadge("good", "OK") : statusBadge("serious", s.check)],
     ]);
   }
-  if (c.listing && (c.listing.has_listing_row || !c.is_sold)) {
-    const l = c.listing;
-    html += `<h3>Listing</h3>` + (l.has_listing_row ? kv([
-      ["Status", listingBadge(l.status)], ["Status on the Listings tab", esc(l.listing_status)],
-      ["Asking price", money(l.asking)], ["Listed on", fmtDate(l.date_listed)], ["Platform", esc(l.platform)],
-      ["Listing", l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.url)}</a>` : ""],
-      ["Notes", esc(l.listing_notes)],
-      ["In the potential", l.status === "Sold" ? "At its sale net" : l.counts ? "Yes, at the asking price" : "No"],
-    ]) : `<div class="empty">Not on the Listings tab, so it shows as Not listed.</div>`);
-  }
+  html += listingSection(c.listing, c.is_sold);
   if (c.source === "scan") {
     html += `<h3>Scan row (Computers tab)</h3>` + kv(SCAN_FIELDS.map(([k, label]) => [label, esc(c[k])]));
   }
@@ -726,6 +831,7 @@ document.addEventListener("input", e => {
   if (id === "s-q") { state.sales.q = e.target.value; render(); }
   if (id === "i-q") { state.inv.q = e.target.value; render(); }
   if (id === "l-q") { state.listings.q = e.target.value; render(); }
+  if (id === "h-q") { state.hw.q = e.target.value; render(); }
 });
 
 document.addEventListener("change", e => {
@@ -734,7 +840,8 @@ document.addEventListener("change", e => {
     "i-win11": ["inv", "win11"], "i-status": ["inv", "status"], "i-drive": ["inv", "drive"],
     "l-status": ["listings", "status"], "l-kind": ["listings", "kind"] };
   if (map[id]) { state[map[id][0]][map[id][1]] = v; render(); }
-  if (id === "h-type") { state.itemType = v; render(); }
+  const hw = { "h-type": "type", "h-condition": "condition", "h-listing": "listing" };
+  if (hw[id]) { state.hw[hw[id]] = v; render(); }
   if (id === "scan-file" && state.openAsset) loadScan(state.openAsset, v);
 });
 
@@ -745,6 +852,12 @@ document.addEventListener("click", e => {
     const group = seg.parentElement.id;
     if (group === "i-sold") state.inv.sold = seg.dataset.v;
     if (group === "f-scope") state.fleetScope = seg.dataset.v;
+    if (group === "h-sold") state.hw.sold = seg.dataset.v;
+    render();
+    return;
+  }
+  if (t.id === "h-reset") {
+    Object.assign(state.hw, { q: "", type: "", condition: "", listing: "", sold: "unsold" });
     render();
     return;
   }
@@ -755,7 +868,7 @@ document.addEventListener("click", e => {
   }
   const th = t.closest("th.sortable");
   if (th) {
-    const s = state.tab === "sales" ? state.sales : state.tab === "listings" ? state.listings : state.inv;
+    const s = { sales: state.sales, listings: state.listings, hardware: state.hw }[state.tab] || state.inv;
     if (s.sort === th.dataset.sort) s.dir = -s.dir; else { s.sort = th.dataset.sort; s.dir = 1; }
     render();
     return;

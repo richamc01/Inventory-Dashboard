@@ -1,0 +1,416 @@
+{
+ "version": 1,
+ "fill_down": [
+  {
+   "sheet": "Computers",
+   "header": "win11_override",
+   "column": "U",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF($A2=\"\",\"\",IFERROR(INDEX(Master!$G$2:$G$499,MATCH($A2,Master!$A$2:$A$499,0))&\"\",\"\"))"
+  },
+  {
+   "sheet": "Computers",
+   "header": "manual_notes",
+   "column": "V",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF($A2=\"\",\"\",IFERROR(INDEX(Master!$H$2:$H$499,MATCH($A2,Master!$A$2:$A$499,0))&\"\",\"\"))"
+  },
+  {
+   "sheet": "Computers",
+   "header": "win11_effective",
+   "column": "W",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF($A2=\"\",\"\",IF($U2<>\"\",$U2,$O2))"
+  },
+  {
+   "sheet": "Computers",
+   "header": "ram_mb_effective",
+   "column": "X",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF($A2=\"\",\"\",IF(ISNUMBER(SEARCH(\"real RAM = none\",$V2)),0,$H2))"
+  },
+  {
+   "sheet": "Computers",
+   "header": "sold",
+   "column": "Y",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF($A2=\"\",\"\",IF(COUNTIF(Sales!$B$2:$B$500,$A2)>0,\"SOLD\",\"\"))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Type",
+   "column": "D",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IFERROR(INDEX(Computers!$B$2:$B$500,MATCH(B2,Computers!$A$2:$A$500,0))&\"\",IFERROR(INDEX(Master!$D$2:$D$499,MATCH(B2,Master!$A$2:$A$499,0))&\"\",IFERROR(INDEX(Items!$C$2:$C$500,MATCH(B2,Items!$A$2:$A$500,0))&\"\",IFERROR(INDEX(Items!$C$2:$C$500,MATCH(B2,Items!$B$2:$B$500,0))&\"\",LEFT(B2,FIND(\"-\",B2&\"-\")-1))))))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Model",
+   "column": "E",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IFERROR(INDEX(Computers!$E$2:$E$500,MATCH(B2,Computers!$A$2:$A$500,0))&\"\",IFERROR(INDEX(Master!$C$2:$C$499,MATCH(B2,Master!$A$2:$A$499,0))&\"\",IFERROR(INDEX(Items!$E$2:$E$500,MATCH(B2,Items!$A$2:$A$500,0))&\"\",IFERROR(INDEX(Items!$E$2:$E$500,MATCH(B2,Items!$B$2:$B$500,0))&\"\",\"NOT FOUND\")))))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Price used",
+   "column": "Q",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IF(F2<>\"\",F2,IF(OR(C2=\"\",COUNTIFS($C$2:$C$500,C2,$I$2:$I$500,\"<>\")=0),\"\",(SUMIFS($I$2:$I$500,$C$2:$C$500,C2)-SUMIFS($F$2:$F$500,$C$2:$C$500,C2))/COUNTIFS($C$2:$C$500,C2,$F$2:$F$500,\"\"))))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Fees used",
+   "column": "R",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IF(G2<>\"\",G2,IF(C2=\"\",0,SUMIFS($J$2:$J$500,$C$2:$C$500,C2)/COUNTIF($C$2:$C$500,C2))))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Shipping used",
+   "column": "S",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IF(H2<>\"\",H2,IF(C2=\"\",0,SUMIFS($K$2:$K$500,$C$2:$C$500,C2)/COUNTIF($C$2:$C$500,C2))))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Net",
+   "column": "T",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(OR(B2=\"\",Q2=\"\"),\"\",Q2-R2-S2)"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Date used",
+   "column": "U",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IF(A2<>\"\",A2,IF(C2=\"\",\"\",IF(INDEX($A$2:$A$500,MATCH(C2,$C$2:$C$500,0))=\"\",\"\",INDEX($A$2:$A$500,MATCH(C2,$C$2:$C$500,0))))))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Platform used",
+   "column": "V",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IF(L2<>\"\",L2,IF(C2=\"\",\"\",INDEX($L$2:$L$500,MATCH(C2,$C$2:$C$500,0))&\"\")))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Machines in order",
+   "column": "W",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(OR(B2=\"\",C2=\"\"),\"\",COUNTIF($C$2:$C$500,C2))"
+  },
+  {
+   "sheet": "Sales",
+   "header": "Check",
+   "column": "X",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF(B2=\"\",\"\",IF(COUNTIF($B$2:$B$500,B2)>1,\"DUPLICATE\",IF(E2=\"NOT FOUND\",\"ID NOT FOUND\",IF(AND(C2=\"\",N(I2)+N(J2)+N(K2)>0),\"ORDER ID MISSING\",IF(AND(C2<>\"\",OR(COUNTIFS($C$2:$C$500,C2,$I$2:$I$500,\"<>\")>1,COUNTIFS($C$2:$C$500,C2,$J$2:$J$500,\"<>\")>1,COUNTIFS($C$2:$C$500,C2,$K$2:$K$500,\"<>\")>1)),\"ORDER TOTAL TWICE\",IF(Q2=\"\",\"NO PRICE\",IF(U2=\"\",\"NO DATE\",IF(AND(C2<>\"\",N(G2)+N(H2)>0,SUMIFS($J$2:$J$500,$C$2:$C$500,C2)+SUMIFS($K$2:$K$500,$C$2:$C$500,C2)>0),\"FEES TWICE\",IF(OR(Q2<0,AND(C2<>\"\",COUNTIFS($C$2:$C$500,C2,$I$2:$I$500,\"<>\")>0,ABS(SUMIFS($Q$2:$Q$500,$C$2:$C$500,C2)-SUMIFS($I$2:$I$500,$C$2:$C$500,C2))>0.005)),\"PRICE MISMATCH\",\"OK\")))))))))"
+  },
+  {
+   "sheet": "Listings",
+   "header": "Current status",
+   "column": "H",
+   "first": 2,
+   "last": 500,
+   "formula": "=IF($A2=\"\",\"\",IF(COUNTIF(Sales!$B$2:$B$500,$A2)>0,\"Sold\",IF($B2=\"\",\"Not listed\",$B2)))"
+  }
+ ],
+ "fixed": {
+  "Summary": {
+   "B4": "=COUNTIF(Computers!$B$2:$B$500,A4)",
+   "B5": "=COUNTIF(Computers!$B$2:$B$500,A5)",
+   "B6": "=COUNTIF(Computers!$B$2:$B$500,A6)",
+   "B7": "=COUNTIF(Computers!$B$2:$B$500,A7)",
+   "B8": "=COUNTIF(Computers!$B$2:$B$500,A8)",
+   "B9": "=COUNTIF(Computers!$B$2:$B$500,A9)",
+   "B10": "=SUM(B4:B9)",
+   "B13": "=COUNTIF(Computers!$W$2:$W$500,A13)",
+   "B14": "=COUNTIF(Computers!$W$2:$W$500,A14)",
+   "B15": "=COUNTIF(Computers!$W$2:$W$500,A15)",
+   "B16": "=COUNTIF(Computers!$W$2:$W$500,A16)",
+   "B17": "=COUNTIF(Computers!$W$2:$W$500,A17)",
+   "B18": "=COUNTIF(Computers!$W$2:$W$500,A18)",
+   "B21": "=COUNTIF(Computers!$R$2:$R$500,A21)",
+   "B22": "=COUNTIF(Computers!$R$2:$R$500,A22)",
+   "B25": "=COUNTIF(Items!$C$2:$C$500,\"?*\")",
+   "B26": "=SUM(Bulk!$D$2:$D$500)",
+   "B29": "=COUNTA(Master!$A$2:$A$499)",
+   "B30": "=SUMPRODUCT(--(COUNTIF(Computers!$A$2:$A$500,Master!$A$2:$A$499)>0),--(Master!$A$2:$A$499<>\"\"))",
+   "B33": "=COUNTIF(Computers!$W$2:$W$500,A33)",
+   "B34": "=COUNTIF(Computers!$W$2:$W$500,A34)"
+  },
+  "Selling Dashboard": {
+   "B5": "=COUNTIF(Sales!$B$2:$B$500,\"?*\")",
+   "B6": "=SUM(Sales!$Q$2:$Q$500)",
+   "B7": "=SUM(Sales!$R$2:$R$500)",
+   "B8": "=SUM(Sales!$S$2:$S$500)",
+   "B9": "=SUM(Sales!$T$2:$T$500)",
+   "B10": "=IFERROR(B6/COUNT(Sales!$Q$2:$Q$500),0)",
+   "B11": "=IFERROR(B9/COUNT(Sales!$Q$2:$Q$500),0)",
+   "B12": "=IF(N(B3)=0,\"enter lot price\",B9/B3)",
+   "B13": "=IF(N(B3)=0,\"enter lot price\",B9-B3)",
+   "B14": "=COUNTIF(Computers!$A$2:$A$500,\"?*\")-COUNTIF(Computers!$Y$2:$Y$500,\"SOLD\")",
+   "B15": "=COUNTIF(Sales!$X$2:$X$500,\"<>OK\")-COUNTIF(Sales!$X$2:$X$500,\"\")",
+   "B16": "=SUMPRODUCT((Sales!$C$2:$C$500<>\"\")/COUNTIF(Sales!$C$2:$C$500,Sales!$C$2:$C$500&\"\"))",
+   "B17": "=COUNTIF(Sales!$W$2:$W$500,\">1\")",
+   "B20": "=COUNTIF(Computers!$B$2:$B$500,A20)",
+   "C20": "=COUNTIF(Sales!$D$2:$D$500,A20)",
+   "D20": "=COUNTIFS(Computers!$B$2:$B$500,A20,Computers!$Y$2:$Y$500,\"<>SOLD\")",
+   "E20": "=SUMIF(Sales!$D$2:$D$500,A20,Sales!$Q$2:$Q$500)",
+   "F20": "=SUMIF(Sales!$D$2:$D$500,A20,Sales!$T$2:$T$500)",
+   "G20": "=IFERROR(E20/C20,0)",
+   "B21": "=COUNTIF(Computers!$B$2:$B$500,A21)",
+   "C21": "=COUNTIF(Sales!$D$2:$D$500,A21)",
+   "D21": "=COUNTIFS(Computers!$B$2:$B$500,A21,Computers!$Y$2:$Y$500,\"<>SOLD\")",
+   "E21": "=SUMIF(Sales!$D$2:$D$500,A21,Sales!$Q$2:$Q$500)",
+   "F21": "=SUMIF(Sales!$D$2:$D$500,A21,Sales!$T$2:$T$500)",
+   "G21": "=IFERROR(E21/C21,0)",
+   "B22": "=COUNTIF(Computers!$B$2:$B$500,A22)",
+   "C22": "=COUNTIF(Sales!$D$2:$D$500,A22)",
+   "D22": "=COUNTIFS(Computers!$B$2:$B$500,A22,Computers!$Y$2:$Y$500,\"<>SOLD\")",
+   "E22": "=SUMIF(Sales!$D$2:$D$500,A22,Sales!$Q$2:$Q$500)",
+   "F22": "=SUMIF(Sales!$D$2:$D$500,A22,Sales!$T$2:$T$500)",
+   "G22": "=IFERROR(E22/C22,0)",
+   "B23": "=COUNTIF(Computers!$B$2:$B$500,A23)",
+   "C23": "=COUNTIF(Sales!$D$2:$D$500,A23)",
+   "D23": "=COUNTIFS(Computers!$B$2:$B$500,A23,Computers!$Y$2:$Y$500,\"<>SOLD\")",
+   "E23": "=SUMIF(Sales!$D$2:$D$500,A23,Sales!$Q$2:$Q$500)",
+   "F23": "=SUMIF(Sales!$D$2:$D$500,A23,Sales!$T$2:$T$500)",
+   "G23": "=IFERROR(E23/C23,0)",
+   "B24": "=COUNTIF(Computers!$B$2:$B$500,A24)",
+   "C24": "=COUNTIF(Sales!$D$2:$D$500,A24)",
+   "D24": "=COUNTIFS(Computers!$B$2:$B$500,A24,Computers!$Y$2:$Y$500,\"<>SOLD\")",
+   "E24": "=SUMIF(Sales!$D$2:$D$500,A24,Sales!$Q$2:$Q$500)",
+   "F24": "=SUMIF(Sales!$D$2:$D$500,A24,Sales!$T$2:$T$500)",
+   "G24": "=IFERROR(E24/C24,0)",
+   "B25": "=COUNTIF(Computers!$B$2:$B$500,A25)",
+   "C25": "=COUNTIF(Sales!$D$2:$D$500,A25)",
+   "D25": "=COUNTIFS(Computers!$B$2:$B$500,A25,Computers!$Y$2:$Y$500,\"<>SOLD\")",
+   "E25": "=SUMIF(Sales!$D$2:$D$500,A25,Sales!$Q$2:$Q$500)",
+   "F25": "=SUMIF(Sales!$D$2:$D$500,A25,Sales!$T$2:$T$500)",
+   "G25": "=IFERROR(E25/C25,0)",
+   "B26": "=COUNTIF(Items!$C$2:$C$500,\"?*\")+SUM(Bulk!$D$2:$D$500)",
+   "C26": "=B5-SUM(C20:C25)",
+   "D26": "=MAX(0,B26-C26)",
+   "E26": "=B6-SUM(E20:E25)",
+   "F26": "=B9-SUM(F20:F25)",
+   "G26": "=IFERROR(E26/C26,0)",
+   "A30": "=Lists!F2",
+   "B30": "=COUNTIF(Sales!$V$2:$V$500,A30)",
+   "C30": "=SUMIF(Sales!$V$2:$V$500,A30,Sales!$Q$2:$Q$500)",
+   "D30": "=SUMIF(Sales!$V$2:$V$500,A30,Sales!$R$2:$R$500)",
+   "E30": "=SUMIF(Sales!$V$2:$V$500,A30,Sales!$T$2:$T$500)",
+   "A31": "=Lists!F3",
+   "B31": "=COUNTIF(Sales!$V$2:$V$500,A31)",
+   "C31": "=SUMIF(Sales!$V$2:$V$500,A31,Sales!$Q$2:$Q$500)",
+   "D31": "=SUMIF(Sales!$V$2:$V$500,A31,Sales!$R$2:$R$500)",
+   "E31": "=SUMIF(Sales!$V$2:$V$500,A31,Sales!$T$2:$T$500)",
+   "A32": "=Lists!F4",
+   "B32": "=COUNTIF(Sales!$V$2:$V$500,A32)",
+   "C32": "=SUMIF(Sales!$V$2:$V$500,A32,Sales!$Q$2:$Q$500)",
+   "D32": "=SUMIF(Sales!$V$2:$V$500,A32,Sales!$R$2:$R$500)",
+   "E32": "=SUMIF(Sales!$V$2:$V$500,A32,Sales!$T$2:$T$500)",
+   "A33": "=Lists!F5",
+   "B33": "=COUNTIF(Sales!$V$2:$V$500,A33)",
+   "C33": "=SUMIF(Sales!$V$2:$V$500,A33,Sales!$Q$2:$Q$500)",
+   "D33": "=SUMIF(Sales!$V$2:$V$500,A33,Sales!$R$2:$R$500)",
+   "E33": "=SUMIF(Sales!$V$2:$V$500,A33,Sales!$T$2:$T$500)",
+   "A34": "=Lists!F6",
+   "B34": "=COUNTIF(Sales!$V$2:$V$500,A34)",
+   "C34": "=SUMIF(Sales!$V$2:$V$500,A34,Sales!$Q$2:$Q$500)",
+   "D34": "=SUMIF(Sales!$V$2:$V$500,A34,Sales!$R$2:$R$500)",
+   "E34": "=SUMIF(Sales!$V$2:$V$500,A34,Sales!$T$2:$T$500)",
+   "A35": "=Lists!F7",
+   "B35": "=COUNTIF(Sales!$V$2:$V$500,A35)",
+   "C35": "=SUMIF(Sales!$V$2:$V$500,A35,Sales!$Q$2:$Q$500)",
+   "D35": "=SUMIF(Sales!$V$2:$V$500,A35,Sales!$R$2:$R$500)",
+   "E35": "=SUMIF(Sales!$V$2:$V$500,A35,Sales!$T$2:$T$500)",
+   "A39": "=IF(COUNT(Sales!$U$2:$U$500)=0,\"\",DATE(YEAR(MIN(Sales!$U$2:$U$500)),MONTH(MIN(Sales!$U$2:$U$500)),1))",
+   "B39": "=IF(A39=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A39,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A39),MONTH(A39)+1,1)))",
+   "C39": "=IF(A39=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A39,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A39),MONTH(A39)+1,1)))",
+   "D39": "=IF(A39=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A39,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A39),MONTH(A39)+1,1)))",
+   "A40": "=IF(A39=\"\",\"\",DATE(YEAR(A39),MONTH(A39)+1,1))",
+   "B40": "=IF(A40=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A40,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A40),MONTH(A40)+1,1)))",
+   "C40": "=IF(A40=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A40,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A40),MONTH(A40)+1,1)))",
+   "D40": "=IF(A40=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A40,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A40),MONTH(A40)+1,1)))",
+   "A41": "=IF(A40=\"\",\"\",DATE(YEAR(A40),MONTH(A40)+1,1))",
+   "B41": "=IF(A41=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A41,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A41),MONTH(A41)+1,1)))",
+   "C41": "=IF(A41=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A41,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A41),MONTH(A41)+1,1)))",
+   "D41": "=IF(A41=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A41,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A41),MONTH(A41)+1,1)))",
+   "A42": "=IF(A41=\"\",\"\",DATE(YEAR(A41),MONTH(A41)+1,1))",
+   "B42": "=IF(A42=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A42,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A42),MONTH(A42)+1,1)))",
+   "C42": "=IF(A42=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A42,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A42),MONTH(A42)+1,1)))",
+   "D42": "=IF(A42=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A42,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A42),MONTH(A42)+1,1)))",
+   "A43": "=IF(A42=\"\",\"\",DATE(YEAR(A42),MONTH(A42)+1,1))",
+   "B43": "=IF(A43=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A43,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A43),MONTH(A43)+1,1)))",
+   "C43": "=IF(A43=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A43,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A43),MONTH(A43)+1,1)))",
+   "D43": "=IF(A43=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A43,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A43),MONTH(A43)+1,1)))",
+   "A44": "=IF(A43=\"\",\"\",DATE(YEAR(A43),MONTH(A43)+1,1))",
+   "B44": "=IF(A44=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A44,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A44),MONTH(A44)+1,1)))",
+   "C44": "=IF(A44=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A44,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A44),MONTH(A44)+1,1)))",
+   "D44": "=IF(A44=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A44,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A44),MONTH(A44)+1,1)))",
+   "A45": "=IF(A44=\"\",\"\",DATE(YEAR(A44),MONTH(A44)+1,1))",
+   "B45": "=IF(A45=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A45,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A45),MONTH(A45)+1,1)))",
+   "C45": "=IF(A45=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A45,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A45),MONTH(A45)+1,1)))",
+   "D45": "=IF(A45=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A45,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A45),MONTH(A45)+1,1)))",
+   "A46": "=IF(A45=\"\",\"\",DATE(YEAR(A45),MONTH(A45)+1,1))",
+   "B46": "=IF(A46=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A46,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A46),MONTH(A46)+1,1)))",
+   "C46": "=IF(A46=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A46,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A46),MONTH(A46)+1,1)))",
+   "D46": "=IF(A46=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A46,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A46),MONTH(A46)+1,1)))",
+   "A47": "=IF(A46=\"\",\"\",DATE(YEAR(A46),MONTH(A46)+1,1))",
+   "B47": "=IF(A47=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A47,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A47),MONTH(A47)+1,1)))",
+   "C47": "=IF(A47=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A47,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A47),MONTH(A47)+1,1)))",
+   "D47": "=IF(A47=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A47,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A47),MONTH(A47)+1,1)))",
+   "A48": "=IF(A47=\"\",\"\",DATE(YEAR(A47),MONTH(A47)+1,1))",
+   "B48": "=IF(A48=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A48,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A48),MONTH(A48)+1,1)))",
+   "C48": "=IF(A48=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A48,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A48),MONTH(A48)+1,1)))",
+   "D48": "=IF(A48=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A48,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A48),MONTH(A48)+1,1)))",
+   "A49": "=IF(A48=\"\",\"\",DATE(YEAR(A48),MONTH(A48)+1,1))",
+   "B49": "=IF(A49=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A49,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A49),MONTH(A49)+1,1)))",
+   "C49": "=IF(A49=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A49,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A49),MONTH(A49)+1,1)))",
+   "D49": "=IF(A49=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A49,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A49),MONTH(A49)+1,1)))",
+   "A50": "=IF(A49=\"\",\"\",DATE(YEAR(A49),MONTH(A49)+1,1))",
+   "B50": "=IF(A50=\"\",\"\",COUNTIFS(Sales!$U$2:$U$500,\">=\"&A50,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A50),MONTH(A50)+1,1)))",
+   "C50": "=IF(A50=\"\",\"\",SUMIFS(Sales!$Q$2:$Q$500,Sales!$U$2:$U$500,\">=\"&A50,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A50),MONTH(A50)+1,1)))",
+   "D50": "=IF(A50=\"\",\"\",SUMIFS(Sales!$T$2:$T$500,Sales!$U$2:$U$500,\">=\"&A50,Sales!$U$2:$U$500,\"<\"&DATE(YEAR(A50),MONTH(A50)+1,1)))"
+  }
+ },
+ "data_validations": {
+  "Items": [
+   {
+    "type": "list",
+    "sqref": "C2:C500",
+    "source": "Lists!$A$2:$A$9"
+   },
+   {
+    "type": "list",
+    "sqref": "G2:G500",
+    "source": "Lists!$B$2:$B$4"
+   }
+  ],
+  "Bulk": [
+   {
+    "type": "whole",
+    "sqref": "D2:D500",
+    "source": "0"
+   },
+   {
+    "type": "list",
+    "sqref": "B2:B500",
+    "source": "Lists!$C$2:$C$5"
+   },
+   {
+    "type": "list",
+    "sqref": "E2:E500",
+    "source": "Lists!$B$2:$B$4"
+   }
+  ],
+  "Master": [
+   {
+    "type": "list",
+    "sqref": "E2:E499",
+    "source": "Lists!$D$2:$D$10"
+   },
+   {
+    "type": "list",
+    "sqref": "G2:G499",
+    "source": "Lists!$E$2:$E$9"
+   }
+  ],
+  "Sales": [
+   {
+    "type": "date",
+    "sqref": "A2:A500",
+    "source": "36526"
+   },
+   {
+    "type": "decimal",
+    "sqref": "F2:K500",
+    "source": "0"
+   },
+   {
+    "type": "list",
+    "sqref": "B2:B500",
+    "source": "Computers!$A$2:$A$500"
+   },
+   {
+    "type": "list",
+    "sqref": "L2:L500",
+    "source": "Lists!$F$2:$F$7"
+   },
+   {
+    "type": "list",
+    "sqref": "M2:M500",
+    "source": "Lists!$G$2:$G$7"
+   }
+  ],
+  "Listings": [
+   {
+    "type": "decimal",
+    "sqref": "C2:C500",
+    "source": "0"
+   },
+   {
+    "type": "date",
+    "sqref": "D2:D500",
+    "source": "36526"
+   },
+   {
+    "type": "list",
+    "sqref": "A2:A500",
+    "source": "Computers!$A$2:$A$500"
+   },
+   {
+    "type": "list",
+    "sqref": "B2:B500",
+    "source": "Lists!$H$2:$H$6"
+   },
+   {
+    "type": "list",
+    "sqref": "E2:E500",
+    "source": "Lists!$F$2:$F$7"
+   }
+  ]
+ },
+ "conditional_formats": {
+  "Items": [
+   {
+    "sqref": "A2:H500",
+    "type": "expression",
+    "formula": "OR(AND($A2<>\"\",COUNTIF(SalesAssetIDs,$A2)>0),AND($B2<>\"\",COUNTIF(SalesAssetIDs,$B2)>0))"
+   }
+  ],
+  "Computers": [
+   {
+    "sqref": "A2:Y500",
+    "type": "expression",
+    "formula": "$Y2=\"SOLD\""
+   }
+  ],
+  "Listings": [
+   {
+    "sqref": "A2:H500",
+    "type": "expression",
+    "formula": "$H2=\"Sold\""
+   }
+  ]
+ },
+ "defined_names": {
+  "SalesAssetIDs": "Sales!$B$2:$B$500"
+ }
+}
