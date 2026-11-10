@@ -263,11 +263,21 @@ def test_statuses(lsnap):
     assert unit(lsnap, "SER-RAM-1")["status"] == "Needs listed" and not unit(lsnap, "SER-RAM-1")["counts"]
     assert unit(lsnap, "AIO-004")["status"] == "Removed" and not unit(lsnap, "AIO-004")["counts"]
     assert unit(lsnap, "DT-002")["status"] == "Sold" and not unit(lsnap, "DT-002")["has_listing_row"]
-    assert unit(lsnap, "MON-001")["kind"] == "Item"
+    assert unit(lsnap, "MON-001")["kind"] == "Hardware/Other"
     counts = {s["label"]: s["count"] for s in lsnap["listings"]["status_counts"]}
     # 6 machines + 4 items; XX-999 matches nothing and is not a unit.
     assert counts == {"Sold": 3, "Pending": 1, "Listed": 3, "Needs listed": 1, "Removed": 1, "On hold": 1}
     assert sum(counts.values()) == 10
+    L = lsnap["listings"]
+    # 5 machines + AIO-004 (Master only) = 6 machines; 4 hardware/other items.
+    assert L["totals_split"] == {"machines": 6, "other": 4}
+    assert L["by_status"]["Sold"] == {"machines": 3, "other": 0}
+    assert L["by_status"]["Listed"] == {"machines": 1, "other": 2}     # DT-003; MON-001, SER-RAM-2
+    assert L["by_status"]["Pending"] == {"machines": 1, "other": 0}
+    assert L["by_status"]["Removed"] == {"machines": 1, "other": 0}
+    assert L["active_split"] == {"machines": 2, "other": 2}
+    rows = {r["label"]: r for r in L["status_counts"]}
+    assert all(r["machines"] + r["other"] == r["count"] for r in rows.values())
 
 
 def test_listing_problems_flagged(lsnap):

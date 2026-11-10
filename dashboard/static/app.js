@@ -305,17 +305,25 @@ function viewListings(d) {
       <td class="num">${money(counted.reduce((a, u) => a + u.asking, 0))}</td>
       <td class="num">${money(rows.reduce((a, u) => a + (Number(u.sale_net) || 0), 0))}</td><td colspan="4" class="muted small">Asking total counts Listed and Pending only</td></tr></tfoot>` : "";
   const statuses = L.status_counts.map(s => s.label);
+  const split = x => `${x.machines} machine${x.machines === 1 ? "" : "s"}, ${x.other} hardware/other`;
+  const by = s => (L.by_status && L.by_status[s]) || { machines: 0, other: 0 };
+  const num = s => by(s).machines + by(s).other;
   const tiles = `<div class="tiles">
     ${potentialTiles(d)}
     <div class="tile"><div class="label">Listed or pending</div><div class="value">${L.active}</div>
+      <div class="sub">${split(L.active_split)}</div>
       <div class="sub">${L.listed} listed · ${L.pending} pending · asking ${money(L.asking_total)}</div></div>
-    <div class="tile"><div class="label">Needs listed</div><div class="value">${L.needs_listed}</div>
-      <div class="sub">${(L.status_counts.find(s => s.label === "Not listed") || { count: 0 }).count} not listed yet</div></div>
+    <div class="tile"><div class="label">Needs listed</div><div class="value">${num("Needs listed")}</div>
+      <div class="sub">${split(by("Needs listed"))}</div></div>
+    <div class="tile"><div class="label">Not listed</div><div class="value">${num("Not listed")}</div>
+      <div class="sub">${split(by("Not listed"))}</div></div>
+    <div class="tile"><div class="label">Sold</div><div class="value">${num("Sold")}</div>
+      <div class="sub">${split(by("Sold"))}</div></div>
   </div>`;
   return `${tiles}
   <div class="grid cols-2" style="margin-top:16px">
-    <div class="card"><h2>Units by listing status</h2>${hbars(L.status_counts.map(s => ({ label: s.label, value: s.count, tip: `${s.label}: ${s.count} unit${s.count === 1 ? "" : "s"}` })), v => v)}
-      <p class="muted small">Every machine and item appears once. Sold comes from the Sales tab and overrides the Listings status.</p></div>
+    <div class="card"><h2>Units by listing status</h2>${hbars(L.status_counts.map(s => ({ label: s.label, value: s.count, tip: `${s.label}: ${s.count} unit${s.count === 1 ? "" : "s"}\n${s.machines} machine${s.machines === 1 ? "" : "s"}, ${s.other} hardware/other` })), v => v)}
+      <p class="muted small">Every machine and every Items-tab entry (hardware/other) appears once. Sold comes from the Sales tab and overrides the Listings status.</p></div>
     <div class="card"><h2>How the potential is worked out</h2><dl class="kv">
       <dt>Sold</dt><dd>Actual net from the Sales tab, after fees and shipping: ${money(L.sold_net)}</dd>
       <dt>Listed and Pending</dt><dd>Asking price as entered, no fees or shipping taken off: ${money(L.asking_total)}</dd>
@@ -326,8 +334,8 @@ function viewListings(d) {
     <div class="filters">
       <input type="search" id="l-q" placeholder="Search ID, serial, model, spec, notes…" value="${esc(f.q)}">
       <select id="l-status">${options(statuses, f.status, "Any status")}</select>
-      <select id="l-kind">${options(uniq(all.map(u => u.kind)), f.kind, "Machines and items")}</select>
-      <span class="count">${rows.length} of ${all.length} units</span>
+      <select id="l-kind">${options(uniq(all.map(u => u.kind)), f.kind, "Machines and hardware/other")}</select>
+      <span class="count">${rows.length} of ${all.length} units (${all.filter(u => u.kind === "Computer").length} machines, ${all.filter(u => u.kind === "Hardware/Other").length} hardware/other)</span>
     </div>
     <div class="table-wrap"><table><thead>${sortHeader(cols, f)}</thead><tbody>${body || `<tr><td colspan="12" class="empty">Nothing matches these filters.</td></tr>`}</tbody>${foot}</table></div>
   </div>`;

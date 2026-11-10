@@ -420,7 +420,7 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
                                             "platform", "url", "listing_notes", "has_listing_row", "counts")}
     for it in items:
         aid, serial = it.get("Asset ID"), it.get("Serial")
-        add_unit("Item", [_uid(aid), _uid(serial)],
+        add_unit("Hardware/Other", [_uid(aid), _uid(serial)],
                  {"id": str(aid) if aid is not None else (str(serial) if serial is not None else None),
                   "serial": str(serial) if serial is not None else None,
                   "type": it.get("Type"), "model": it.get("Model"), "detail": it.get("Key spec"),
@@ -447,6 +447,17 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
     status_counts = [{"label": s, "count": counts[s]} for s in STATUS_ORDER if counts.get(s)]
     status_counts += [{"label": s, "count": n} for s, n in counts.items() if s not in STATUS_ORDER]
     active = [u for u in real if u["status"] in ACTIVE_LISTING]
+    # The same counts split by kind: machines (Computers/Master tabs) and
+    # hardware/other (Items tab).
+    kind_counts = {k: Counter(u["status"] for u in real if u["kind"] == k)
+                   for k in ("Computer", "Hardware/Other")}
+    for row in status_counts:
+        row["machines"] = kind_counts["Computer"].get(row["label"], 0)
+        row["other"] = kind_counts["Hardware/Other"].get(row["label"], 0)
+
+    def split(status):
+        return {"machines": kind_counts["Computer"].get(status, 0),
+                "other": kind_counts["Hardware/Other"].get(status, 0)}
     summary = {
         "present": True,
         "rows": len(listing_rows),
@@ -455,6 +466,11 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
         "listed": counts.get("Listed", 0),
         "pending": counts.get("Pending", 0),
         "needs_listed": counts.get("Needs listed", 0),
+        "by_status": {s: split(s) for s in STATUS_ORDER},
+        "active_split": {"machines": sum(1 for u in active if u["kind"] == "Computer"),
+                         "other": sum(1 for u in active if u["kind"] == "Hardware/Other")},
+        "totals_split": {"machines": sum(kind_counts["Computer"].values()),
+                         "other": sum(kind_counts["Hardware/Other"].values())},
         "active_priced": len(counted),
         "active_unpriced": sum(1 for u in active if u["asking"] is None),
         "asking_total": asking_total,
