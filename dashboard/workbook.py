@@ -344,9 +344,12 @@ def compute_sales(rows, known_ids):
     return out
 
 
-LISTING_STATUSES = ["Not listed", "Needs listed", "Listed", "Pending", "Removed"]
+# Statuses you can pick on the Listings tab (Lists tab, column H).
+LISTING_STATUSES = ["Needs listed", "Listed", "Pending", "Removed", "Not for sale"]
+NO_ROW = "Not on Listings tab"      # the unit has no Listings row
+NO_STATUS = "No status"             # a Listings row with column B left blank
 ACTIVE_LISTING = {"Listed", "Pending"}   # count toward the potential
-STATUS_ORDER = ["Sold", "Pending", "Listed", "Needs listed", "Not listed", "Removed"]
+STATUS_ORDER = ["Sold", "Pending", "Listed", "Needs listed", NO_STATUS, "Not for sale", "Removed", NO_ROW]
 
 
 def _uid(v):
@@ -404,8 +407,10 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
         canon = next((s for s in LISTING_STATUSES if raw_status and s.lower() == raw_status.lower()), None)
         if sold_key:
             status = "Sold"
+        elif listing is None:
+            status = NO_ROW
         elif not raw_status:
-            status = "Not listed"
+            status = NO_STATUS
         else:
             status = canon or raw_status
         asking = num((listing or {}).get("Asking price"))
@@ -494,6 +499,9 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
         "listed": counts.get("Listed", 0),
         "pending": counts.get("Pending", 0),
         "needs_listed": counts.get("Needs listed", 0),
+        "not_for_sale": counts.get("Not for sale", 0),
+        "no_row": counts.get(NO_ROW, 0),
+        "no_status": counts.get(NO_STATUS, 0),
         "by_status": {s: split(s) for s in STATUS_ORDER},
         "active_split": {"machines": sum(1 for u in active if u["kind"] == "Computer"),
                          "other": sum(1 for u in active if u["kind"] == "Hardware")},

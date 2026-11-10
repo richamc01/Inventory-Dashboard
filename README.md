@@ -8,7 +8,7 @@ This is a read-only web dashboard for the hardware lot. It reads `Hardware Inven
 |---|---|
 | Overview | Net sales, how much of the lot cost is recovered, profit or amount still to recover, net sales potential, total profit potential, units sold, average net, machines left, cumulative net vs lot cost, sales by machine type, platform, payment method and model, and a list of rows that need attention |
 | Sales | Every sale with search, filters, sortable columns, totals, multi-machine orders grouped together, and daily totals |
-| Listings | Every machine and item with its listing status (Sold, Pending, Listed, Needs listed, Not listed, Removed), asking price, date listed and platform, plus net sales potential and total profit potential. Search, filters and sortable columns. |
+| Listings | Every machine and item with its listing status (Sold, Pending, Listed, Needs listed, Removed, Not for sale, or Not on Listings tab when it has no row), asking price, date listed and platform, plus net sales potential and total profit potential. Search, filters and sortable columns. |
 | Computer Inventory | Every machine, including Master-only machines that were never scanned, with search, filters and sorting. Click a machine to see every scanned field, its Master notes, its sale, and the full scan file split into sections. Every scan for an asset is listed. |
 | Computer Fleet | Breakdowns of unsold or all machines by model, CPU, generation, RAM, Windows 11, TPM, drive, type and status, a Type codes legend, and groups of identical machines |
 | Hardware Inventory | Every entry on the Items tab with search, filters (sold, type, condition, listing status) and sortable columns. Click an item for its Items-tab fields, listing and sale. The Bulk tab is listed below it. |

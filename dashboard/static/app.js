@@ -275,7 +275,7 @@ function potentialTiles(d) {
       <div class="sub">Net sales potential minus ${money(k.lot_price)} lot cost</div></div>` : ""}`;
 }
 
-const STATUS_RANK = { "Sold": 0, "Pending": 1, "Listed": 2, "Needs listed": 3, "Not listed": 4, "Removed": 5 };
+const STATUS_RANK = { "Sold": 0, "Pending": 1, "Listed": 2, "Needs listed": 3, "No status": 4, "Not for sale": 5, "Removed": 6, "Not on Listings tab": 7 };
 
 function listingBadge(status) {
   const level = { "Sold": "good", "Pending": "warning", "Listed": "info", "Needs listed": "serious" }[status];
@@ -330,8 +330,10 @@ function viewListings(d) {
       <div class="sub">${L.listed} listed · ${L.pending} pending · asking ${money(L.asking_total)}</div></div>
     <div class="tile"><div class="label">Needs listed</div><div class="value">${num("Needs listed")}</div>
       <div class="sub">${split(by("Needs listed"))}</div></div>
-    <div class="tile"><div class="label">Not listed</div><div class="value">${num("Not listed")}</div>
-      <div class="sub">${split(by("Not listed"))}</div></div>
+    <div class="tile"><div class="label">Not for sale</div><div class="value">${num("Not for sale")}</div>
+      <div class="sub">${split(by("Not for sale"))}</div></div>
+    <div class="tile"><div class="label">Not on Listings tab</div><div class="value">${num("Not on Listings tab")}</div>
+      <div class="sub">${split(by("Not on Listings tab"))}</div></div>
     <div class="tile"><div class="label">Sold</div><div class="value">${num("Sold")}</div>
       <div class="sub">${split(by("Sold"))}</div></div>
   </div>`;
@@ -342,7 +344,7 @@ function viewListings(d) {
     <div class="card"><h2>How the potential is worked out</h2><dl class="kv">
       <dt>Sold</dt><dd>Actual net from the Sales tab, after fees and shipping: ${money(L.sold_net)}</dd>
       <dt>Listed and Pending</dt><dd>Asking price as entered, no fees or shipping taken off: ${money(L.asking_total)}</dd>
-      <dt>Not counted</dt><dd>Needs listed, Not listed, Removed, and Listed or Pending rows with no asking price</dd>
+      <dt>Not counted</dt><dd>Needs listed, Not for sale, Removed, No status, Not on Listings tab, and Listed or Pending rows with no asking price</dd>
       <dt>Profit potential</dt><dd>Net sales potential minus the lot cost</dd></dl></div>
   </div>
   <div class="card">
@@ -769,7 +771,7 @@ function listingSection(l, isSold) {
     ["Listing", l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.url)}</a>` : ""],
     ["Notes", esc(l.listing_notes)],
     ["In the potential", l.status === "Sold" ? "At its sale net" : l.counts ? "Yes, at the asking price" : "No"],
-  ]) : `<div class="empty">Not on the Listings tab, so it shows as Not listed.</div>`);
+  ]) : `<div class="empty">Not on the Listings tab yet.</div>`);
 }
 
 function openDrawer(id) {

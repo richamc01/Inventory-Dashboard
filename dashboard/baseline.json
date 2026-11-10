@@ -127,7 +127,7 @@
    "column": "H",
    "first": 2,
    "last": 500,
-   "formula": "=IF($A2=\"\",\"\",IF(COUNTIF(Sales!$B$2:$B$500,$A2)>0,\"Sold\",IF($B2=\"\",\"Not listed\",$B2)))"
+   "formula": "=IF($A2=\"\",\"\",IF(COUNTIF(Sales!$B$2:$B$500,$A2)>0,\"Sold\",IF($B2=\"\",\"No status\",$B2)))"
   }
  ],
  "fixed": {

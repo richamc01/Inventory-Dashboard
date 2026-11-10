@@ -138,7 +138,7 @@ def build(out_dir, listings=False):
         li.append(["SER-RAM-3", "On hold", 15, None, None, None, None, None])
         # Formula column with no saved result, like a file Excel never saved.
         for r in range(2, 12):
-            li[f"H{r}"] = f'=IF($A{r}="","",IF(COUNTIF(Sales!$B$2:$B$500,$A{r})>0,"Sold",IF($B{r}="","Not listed",$B{r})))'
+            li[f"H{r}"] = f'=IF($A{r}="","",IF(COUNTIF(Sales!$B$2:$B$500,$A{r})>0,"Sold",IF($B{r}="","No status",$B{r})))'
 
     ls = wb.create_sheet("Lists")
     ls.append(["Type", "Sale platform"])

@@ -540,3 +540,25 @@ def test_note_overrides(tmp_path):
     assert aio["cpu_short"] == "i5-6500" and aio["ram_gb"] == 0
     # The note does not change Excel's own columns, so no stale-value warning appears.
     assert not any(a["kind"] == "Saved values out of date" for a in s["attention"])
+
+
+def test_no_row_and_no_status(tmp_path):
+    import openpyxl
+    path = build(str(tmp_path), listings=True)
+    wb = openpyxl.load_workbook(path)
+    li = wb["Listings"]
+    li["B5"] = None                     # MON-001: row kept, status cleared
+    li["A10"] = None                    # AIO-004: row cleared
+    li["B10"] = None
+    li["A11"] = "SER-RAM-3"; li["B11"] = "Not for sale"
+    wb.save(path)
+    s = build_snapshot(path, None, baseline=None)
+    st = {u["id"]: u["status"] for u in s["listing_units"]}
+    assert st["MON-001"] == "No status"
+    assert st["AIO-004"] == "Not on Listings tab"
+    assert st["SER-RAM-3"] == "Not for sale"
+    L = s["listings"]
+    assert L["no_row"] == 1 and L["no_status"] == 1 and L["not_for_sale"] == 1
+    assert L["by_status"]["Not on Listings tab"] == {"machines": 1, "other": 0}
+    assert not any(a["kind"] == "Unknown listing status" and a["asset_id"] == "SER-RAM-3" for a in s["attention"])
+    assert not unit(s, "SER-RAM-3")["counts"]
