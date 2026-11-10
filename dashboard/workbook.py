@@ -516,6 +516,55 @@ TYPE_CODE_HEADERS = ("Type code", "Meaning", "Used for")
 FINAL_STATUSES = {"DEAD", "BIOS-PW"}
 
 
+def note_value(notes, label):
+    """Text after 'Label:' in a Master note, up to the end of that sentence.
+
+    'Drives: 4x 1.2TB SAS 2.5", Dell P/N 1FF200-150. RAM is ...' -> '4x 1.2TB SAS 2.5", Dell P/N 1FF200-150'
+    'RAM swap: ...' does not match 'RAM:' (the colon must follow the label).
+    """
+    if not notes:
+        return None
+    m = re.search(rf"(?<![A-Za-z])(?i:{label}):\s*(.+?)(?=\.\s+[A-Z]|\.?\s*$)", str(notes), re.S)
+    return m.group(1).strip() if m else None
+
+
+def apply_note_overrides(rec, notes):
+    """Use 'Drives:', 'RAM:' and 'CPU:' from the Master note instead of the scan.
+
+    The scan values are kept as scan_* so the detail panel can show both.
+    """
+    over = {}
+    d = note_value(notes, "Drives")
+    if d:
+        none = bool(re.match(r"none\b", d, re.I))
+        rec["scan_drives"] = rec.get("drives")
+        rec["drives"] = None if none else d
+        rec["has_drive"] = not none
+        over["drives"] = d
+    r = note_value(notes, "RAM")
+    if r:
+        gb = None
+        if re.match(r"none\b", r, re.I):
+            gb = 0
+        else:
+            m = re.search(r"(\d+(?:\.\d+)?)\s*GB", r, re.I)
+            if m:
+                gb = float(m.group(1))
+                gb = int(gb) if gb.is_integer() else gb
+        if gb is not None:
+            rec["scan_ram_gb"] = rec.get("ram_gb")
+            rec["ram_gb"] = gb
+            over["ram"] = r
+    cpu = note_value(notes, "CPU")
+    if cpu:
+        rec["scan_cpu"] = rec.get("cpu")
+        rec["cpu"] = cpu
+        rec["cpu_short"] = cpu_short(cpu)
+        over["cpu"] = cpu
+    rec["note_overrides"] = over
+    return rec
+
+
 def final_status(master_row):
     code = str((master_row or {}).get("Status code") or "").strip().upper()
     return code if code in FINAL_STATUSES else None
@@ -730,6 +779,7 @@ def _build(wb, wbf, path, raw_dir):
         })
         if isinstance(rec.get("ram_gb"), float) and rec["ram_gb"].is_integer():
             rec["ram_gb"] = int(rec["ram_gb"])
+        apply_note_overrides(rec, notes)
         out_comp.append(rec)
 
     # Machines that exist only on the Master tab (never scanned).
@@ -746,6 +796,7 @@ def _build(wb, wbf, path, raw_dir):
             "master": m, "sale": sale_by_id.get(aid),
             "scan_files": scans.get(aid, []), "source": "master-only",
         })
+        apply_note_overrides(out_comp[-1], m.get("Notes"))
     out_comp.sort(key=lambda r: natural_key(r["asset_id"]))
 
     # ---- KPIs --------------------------------------------------------------

@@ -499,3 +499,44 @@ def test_final_status_not_flagged(tmp_path):
     assert aio["final_status"] == "DEAD" and aio["status"] == "DEAD" and not aio["is_sold"]
     assert next(c for c in s["computers"] if c["asset_id"] == "DT-002")["final_status"] == "BIOS-PW"
     assert s["kpis"]["machines_total"] == 6
+
+
+# ---- Master-note corrections (no rescan needed) ---------------------------------
+
+from dashboard.workbook import note_value  # noqa: E402
+
+
+def test_note_value():
+    sv1 = 'Drives: 4x 1.2TB 10K SAS 2.5", Dell P/N 1FF200-150. RAM is 3x 8GB DDR3 non-ECC unbuffered.'
+    assert note_value(sv1, "Drives") == '4x 1.2TB 10K SAS 2.5", Dell P/N 1FF200-150'
+    assert note_value(sv1, "RAM") is None                       # "RAM is", not "RAM:"
+    sv3 = ('Scan returned CHECK no-service-tag. Serial number is MXQ30200SL. Drives: 6x 900GB 10K SAS 2.5" '
+           '(HP EG0900FBLSK) + 2x 146GB SAS 2.5" (HP EH0146FBQDC).')
+    assert note_value(sv3, "Drives") == '6x 900GB 10K SAS 2.5" (HP EG0900FBLSK) + 2x 146GB SAS 2.5" (HP EH0146FBQDC)'
+    assert note_value("TODO 11/9/26 RAM swap: remove the 16GB stick.", "RAM") is None
+    assert note_value("Removed and scrapped; now no drive. Drives: none.", "Drives") == "none"
+    assert note_value("RAM: 8GB (2x 4GB). CPU: i5-6500", "CPU") == "i5-6500"
+    assert note_value(None, "RAM") is None
+
+
+def test_note_overrides(tmp_path):
+    import openpyxl
+    path = build(str(tmp_path))
+    wb = openpyxl.load_workbook(path)
+    ms = wb["Master"]
+    notes = {"DT-002": "SSD moved out. Drives: none.",
+             "DT-003": "RAM swap done. RAM: 16GB (2x 8GB). Drives: Samsung 870 EVO 500GB.",
+             "AIO-004": "Not scanned. CPU: Intel(R) Core(TM) i5-6500 CPU @ 3.20GHz. RAM: none installed."}
+    for r in range(2, ms.max_row + 1):
+        if ms.cell(r, 1).value in notes:
+            ms.cell(r, 8).value = notes[ms.cell(r, 1).value]
+    wb.save(path)
+    s = build_snapshot(path, None, baseline=None)
+    dt2, dt3, aio = (comp(s, a) for a in ("DT-002", "DT-003", "AIO-004"))
+    assert dt2["has_drive"] is False and dt2["drives"] is None and dt2["scan_drives"] == "FAKE SSD 240 GB"
+    assert dt3["ram_gb"] == 16 and dt3["scan_ram_gb"] == 8
+    assert dt3["has_drive"] and dt3["drives"] == "Samsung 870 EVO 500GB"
+    assert set(dt3["note_overrides"]) == {"ram", "drives"}
+    assert aio["cpu_short"] == "i5-6500" and aio["ram_gb"] == 0
+    # The note does not change Excel's own columns, so no stale-value warning appears.
+    assert not any(a["kind"] == "Saved values out of date" for a in s["attention"])

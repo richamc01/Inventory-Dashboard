@@ -112,6 +112,23 @@
   </ol>
   <div class="tip"><strong>Final statuses:</strong> once you've done all you can with a machine, set column E to <code>DEAD</code> or <code>BIOS-PW</code>. It stops showing under Needs attention, but stays in Computer Inventory, the counts, Listings and Sales like any other machine. To see these machines, pick <strong>Final status (DEAD, BIOS-PW)</strong> in Computer Inventory's status filter.</div>
   <div class="tip"><strong>Borrowed RAM:</strong> if a machine was scanned with a test DIMM that you then removed, write <code>TEST DIMM USED, real RAM = none</code> in column H. The Computers tab then counts its RAM as 0.</div>
+  <h3>Correct a machine without re-scanning</h3>
+  <p>When you swap RAM, pull a drive or change a CPU, you don't need to scan the machine again. Add a label to its Master note (column H) and the dashboard uses it instead of the scan, everywhere: inventory, fleet charts, groups and listings.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Write in Notes</th><th>Example</th><th>Effect on the dashboard</th></tr></thead>
+    <tbody>
+      <tr><td><code>Drives:</code></td><td><code>Drives: none.</code> or <code>Drives: 1x Samsung 870 EVO 500GB.</code></td><td>Replaces the scanned drive. <code>none</code> means no drive.</td></tr>
+      <tr><td><code>RAM:</code></td><td><code>RAM: 8GB (2x 4GB).</code></td><td>Replaces the scanned RAM. The number before <code>GB</code> is used; <code>none</code> means 0.</td></tr>
+      <tr><td><code>CPU:</code></td><td><code>CPU: Intel Core i5-7500.</code></td><td>Replaces the scanned CPU.</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="rules">
+    <li>Write the label exactly, with the colon right after it (<code>RAM:</code>, not <code>RAM swap:</code>). It can go anywhere in the note.</li>
+    <li>End each one with a period and a space before the next sentence, so the dashboard knows where it stops.</li>
+    <li>The scan row on the Computers tab is not changed. The machine's detail panel shows both: the note's value, and what the scan found.</li>
+    <li>Values from a note are marked <span class="dim small">(note)</span> in Computer Inventory.</li>
+    <li>If a CPU change makes the machine Windows 11 capable (or not), also set column G (Win11 override).</li>
+  </ul>
   <h3>Status codes (column E)</h3>
   <div class="table-wrap"><table>
     <thead><tr><th>Code</th><th>Means</th></tr></thead>

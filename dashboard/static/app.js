@@ -108,6 +108,11 @@ function typeCell(code) {
   return m ? `<span class="code" data-tip="${esc(code)}: ${esc(m)}">${esc(code)}</span>` : esc(code);
 }
 
+// Small marker for a value taken from the Master note instead of the scan.
+function noteMark(c, field) {
+  return c.note_overrides && c.note_overrides[field] ? ` <span class="dim small">(note)</span>` : "";
+}
+
 function ramLabel(gb) {
   return gb === null || gb === undefined ? "" : `${gb} GB`;
 }
@@ -442,9 +447,9 @@ function viewInventory(d) {
     const tpm = c.tpm_visible === null || c.tpm_visible === undefined ? "" : c.tpm_visible ? "Yes" : "No";
     return `<tr class="click" data-asset="${esc(c.asset_id)}">
       <td class="nowrap"><a href="#inventory/${encodeURIComponent(c.asset_id)}" data-asset="${esc(c.asset_id)}">${esc(c.asset_id)}</a></td>
-      <td>${typeCell(c.type)}</td><td class="nowrap">${esc(c.model)}</td><td class="nowrap">${esc(c.cpu_short)}</td>
-      <td class="num">${esc(c.cpu_gen)}</td><td class="num">${esc(ramLabel(c.ram_gb))}</td>
-      <td class="nowrap">${c.has_drive ? esc(c.drives) : c.source === "master-only" ? "" : '<span class="dim">none</span>'}</td>
+      <td>${typeCell(c.type)}</td><td class="nowrap">${esc(c.model)}</td><td class="nowrap">${esc(c.cpu_short)}${noteMark(c, "cpu")}</td>
+      <td class="num">${esc(c.cpu_gen)}</td><td class="num">${esc(ramLabel(c.ram_gb))}${noteMark(c, "ram")}</td>
+      <td class="nowrap">${c.has_drive ? esc(c.drives) : c.source === "master-only" && !(c.note_overrides || {}).drives ? "" : '<span class="dim">none</span>'}${noteMark(c, "drives")}</td>
       <td class="nowrap">${esc(c.win11_eff)}</td><td>${tpm}</td><td>${st}</td>
       <td>${c.is_sold ? `<span class="badge sold">Sold${c.sale && c.sale.net !== null ? " · " + money(c.sale.net) : ""}</span>` : ""}</td>
       <td class="nowrap">${c.listing && !c.is_sold ? listingBadge(c.listing.status) + (c.listing.asking !== null ? " " + money(c.listing.asking) : "") : ""}</td>
@@ -804,8 +809,17 @@ function openDrawer(id) {
     ]);
   }
   html += listingSection(c.listing, c.is_sold);
+  const ov = c.note_overrides || {};
+  if (Object.keys(ov).length) {
+    html += `<h3>From the Master note (used instead of the scan)</h3>` + kv([
+      ["CPU", ov.cpu ? esc(ov.cpu) + (c.source === "scan" ? ` <span class="dim small">scan: ${esc(c.scan_cpu || "none")}</span>` : "") : ""],
+      ["RAM", ov.ram ? esc(ov.ram) + (c.source === "scan" ? ` <span class="dim small">scan: ${esc(ramLabel(c.scan_ram_gb) || "none")}</span>` : "") : ""],
+      ["Drives", ov.drives ? esc(ov.drives) + (c.source === "scan" ? ` <span class="dim small">scan: ${esc(c.scan_drives || "none")}</span>` : "") : ""],
+    ]);
+  }
   if (c.source === "scan") {
-    html += `<h3>Scan row (Computers tab)</h3>` + kv(SCAN_FIELDS.map(([k, label]) => [label, esc(c[k])]));
+    const scanVal = k => (k === "drives" && "scan_drives" in c ? c.scan_drives : k === "cpu" && "scan_cpu" in c ? c.scan_cpu : c[k]);
+    html += `<h3>Scan row (Computers tab)</h3>` + kv(SCAN_FIELDS.map(([k, label]) => [label, esc(scanVal(k))]));
   }
   html += `<h3>Scan file</h3>`;
   if (!c.scan_files || !c.scan_files.length) {
