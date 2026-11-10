@@ -48,7 +48,7 @@ def formula_row(r):
     ]
 
 
-def build(out_dir):
+def build(out_dir, listings=False):
     os.makedirs(os.path.join(out_dir, "inventory-raw"), exist_ok=True)
     wb = openpyxl.Workbook()
     wb.active.title = "README"
@@ -74,6 +74,8 @@ def build(out_dir):
     it.append([None, "SER-RAM-1", "RAM", "Samsung", "M378B5173EB0-YK0", "DIMM 4GB DDR3L-1600", "Untested", None])
     it.append([None, "SER-RAM-2", "RAM", "SK hynix", "HMT42GR7BFR4A-PB", "DIMM 16GB PC3L-12800R ECC 2Rx4", "Untested", None])
     it.append(["MON-001", "SER-MON-1", "MON", "Dell", "P2419H", "24in", "Working", None])
+    if listings:
+        it.append([None, "SER-RAM-3", "RAM", "Samsung", "M378B5173EB0-YK0", "DIMM 4GB DDR3L-1600", "Untested", None])
 
     bk = wb.create_sheet("Bulk")
     bk.append(["Bin ID", "Item type", "Spec", "Quantity", "Condition"])
@@ -118,6 +120,25 @@ def build(out_dir):
         date, aid, oid, price, fees, ship, total, ofees, oship, plat, pay, buyer = s
         sa.append([date, aid, oid, f'=IF(B{r}="","","x")', f'=IF(B{r}="","","x")', price, fees, ship, total,
                    ofees, oship, plat, pay, buyer, None, None] + [f'=IF(B{r}="","",0)'] * 8)
+
+    if listings:
+        li = wb.create_sheet("Listings")
+        li.append(["Asset ID", "Listing status", "Asking price", "Date listed", "Platform", "Listing URL",
+                   "Notes", "Current status"])
+        li.append(["DT-001", "Listed", 150, dt.datetime(2026, 1, 2), "eBay", None, "Sold since", None])
+        li.append(["DT-003", "Listed", 80, dt.datetime(2026, 1, 3), "Facebook Marketplace",
+                   "javascript:alert(1)", None, None])
+        li.append(["DT-010", "pending", 60, None, None, None, None, None])  # lower case on purpose
+        li.append(["MON-001", "Listed", 40, None, None, "https://example.com/listing/1", None, None])
+        li.append(["SER-RAM-1", "Needs listed", 10, None, None, None, None, None])
+        li.append(["SER-RAM-2", "Listed", None, None, None, None, None, None])
+        li.append(["dt-003", "Listed", 999, None, None, None, "Duplicate row", None])
+        li.append(["XX-999", "Listed", 25, None, None, None, "Typo ID", None])
+        li.append(["AIO-004", "Removed", 30, None, None, None, None, None])
+        li.append(["SER-RAM-3", "On hold", 15, None, None, None, None, None])
+        # Formula column with no saved result, like a file Excel never saved.
+        for r in range(2, 12):
+            li[f"H{r}"] = f'=IF($A{r}="","",IF(COUNTIF(Sales!$B$2:$B$500,$A{r})>0,"Sold",IF($B{r}="","Not listed",$B{r})))'
 
     ls = wb.create_sheet("Lists")
     ls.append(["Type", "Sale platform"])

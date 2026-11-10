@@ -318,6 +318,153 @@ def compute_sales(rows, known_ids):
     return out
 
 
+LISTING_STATUSES = ["Not listed", "Needs listed", "Listed", "Pending", "Removed"]
+ACTIVE_LISTING = {"Listed", "Pending"}   # count toward the potential
+STATUS_ORDER = ["Sold", "Pending", "Listed", "Needs listed", "Not listed", "Removed"]
+
+
+def _uid(v):
+    """Matching key for an asset ID or serial: text, trimmed, upper case
+    (Excel's COUNTIF/MATCH ignore case)."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s.upper() or None
+
+
+def safe_url(v):
+    """Only http(s) links are shown as links."""
+    if isinstance(v, str) and re.match(r"^https?://", v.strip(), re.I):
+        return v.strip()
+    return None
+
+
+def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
+                   sold_net, lot_price):
+    """Combine the Listings tab with every machine and item.
+
+    Each machine or item appears once. A unit on the Sales tab is Sold, whatever
+    its Listings row says, and is counted only at its actual sale net. Unsold
+    units count at their asking price only when their status is Listed or
+    Pending and a price is entered.
+    """
+    attention = []
+    # First row per ID wins; later duplicates are flagged and ignored.
+    by_id = OrderedDict()
+    for row_no, r in listing_rows:
+        key = _uid(r.get("Asset ID"))
+        if key in by_id:
+            attention.append({"level": "serious", "kind": "Listing on two rows",
+                              "asset_id": str(r.get("Asset ID")),
+                              "text": f"Listings tab: this ID is on row {by_id[key][0]} and row {row_no}. "
+                                      f"Only row {by_id[key][0]} is used. Delete the extra row."})
+            continue
+        by_id[key] = (row_no, r)
+
+    units, used = [], set()
+
+    def add_unit(kind, uid_list, base):
+        listing, lkey = None, None
+        for k in uid_list:
+            if k and k in by_id:
+                listing, lkey = by_id[k][1], k
+                break
+        if lkey:
+            used.add(lkey)
+        sold_key = next((k for k in uid_list if k and k in sold_upper), None)
+        sale = sale_by_upper.get(sold_key) if sold_key else None
+        raw_status = (listing or {}).get("Listing status")
+        raw_status = str(raw_status).strip() if raw_status is not None else None
+        canon = next((s for s in LISTING_STATUSES if raw_status and s.lower() == raw_status.lower()), None)
+        if sold_key:
+            status = "Sold"
+        elif not raw_status:
+            status = "Not listed"
+        else:
+            status = canon or raw_status
+        asking = num((listing or {}).get("Asking price"))
+        counts = (not sold_key and status in ACTIVE_LISTING and asking is not None and asking >= 0)
+        rec = dict(base, kind=kind, status=status, listing_status=raw_status,
+                   has_listing_row=listing is not None,
+                   listing_row=by_id[lkey][0] if lkey else None,
+                   asking=asking,
+                   date_listed=(listing or {}).get("Date listed"),
+                   platform=(listing or {}).get("Platform"),
+                   url=safe_url((listing or {}).get("Listing URL")),
+                   listing_notes=(listing or {}).get("Notes"),
+                   sale_net=sale["net"] if sale else None,
+                   sale_price=sale["price"] if sale else None,
+                   counts=counts)
+        units.append(rec)
+        aid = base["id"] or "(no ID)"
+        if not sold_key and raw_status and not canon:
+            attention.append({"level": "warning", "kind": "Unknown listing status", "asset_id": base["id"],
+                              "text": f"Listings tab: status '{raw_status}' is not one of "
+                                      f"{', '.join(LISTING_STATUSES)}. Not counted in the potential."})
+        if not sold_key and status in ACTIVE_LISTING and asking is None:
+            attention.append({"level": "warning", "kind": "No asking price", "asset_id": base["id"],
+                              "text": f"Listings tab: {aid} is {status} but has no asking price, "
+                                      "so it is not counted in the potential."})
+        if not sold_key and asking is not None and asking < 0:
+            attention.append({"level": "warning", "kind": "Negative asking price", "asset_id": base["id"],
+                              "text": "Listings tab: asking price is below zero. Not counted."})
+        return rec
+
+    for c in computers:
+        rec = add_unit("Computer", [_uid(c["asset_id"])],
+                       {"id": c["asset_id"], "type": c.get("type"), "model": c.get("model"),
+                        "detail": " · ".join(str(x) for x in [c.get("cpu_short"),
+                                             f"{c['ram_gb']} GB" if c.get("ram_gb") is not None else None] if x),
+                        "in_computers": True})
+        c["listing"] = {k: rec[k] for k in ("status", "listing_status", "asking", "date_listed",
+                                            "platform", "url", "listing_notes", "has_listing_row", "counts")}
+    for it in items:
+        aid, serial = it.get("Asset ID"), it.get("Serial")
+        add_unit("Item", [_uid(aid), _uid(serial)],
+                 {"id": str(aid) if aid is not None else (str(serial) if serial is not None else None),
+                  "serial": str(serial) if serial is not None else None,
+                  "type": it.get("Type"), "model": it.get("Model"), "detail": it.get("Key spec"),
+                  "in_computers": False})
+
+    # Listings rows that match no machine or item.
+    for key, (row_no, r) in by_id.items():
+        if key in used:
+            continue
+        rid = str(r.get("Asset ID"))
+        rec = add_unit("Not in inventory", [key], {"id": rid, "type": None, "model": None,
+                                                    "detail": None, "in_computers": False})
+        rec["counts"] = False
+        attention.append({"level": "warning", "kind": "Listing ID not found", "asset_id": rid,
+                          "text": f"Listings tab row {row_no}: this ID is not on the Computers, Master "
+                                  "or Items tab. Check for a typo. Not counted in the potential."})
+
+    counted = [u for u in units if u["counts"]]
+    asking_total = round(sum(u["asking"] for u in counted), 2)
+    potential = round(sold_net + asking_total, 2)
+    # Rows that match nothing are shown in the table but are not real units.
+    real = [u for u in units if u["kind"] != "Not in inventory"]
+    counts = Counter(u["status"] for u in real)
+    status_counts = [{"label": s, "count": counts[s]} for s in STATUS_ORDER if counts.get(s)]
+    status_counts += [{"label": s, "count": n} for s, n in counts.items() if s not in STATUS_ORDER]
+    active = [u for u in real if u["status"] in ACTIVE_LISTING]
+    summary = {
+        "present": True,
+        "rows": len(listing_rows),
+        "status_counts": status_counts,
+        "active": len(active),
+        "listed": counts.get("Listed", 0),
+        "pending": counts.get("Pending", 0),
+        "needs_listed": counts.get("Needs listed", 0),
+        "active_priced": len(counted),
+        "active_unpriced": sum(1 for u in active if u["asking"] is None),
+        "asking_total": asking_total,
+        "sold_net": round(sold_net, 2),
+        "net_sales_potential": potential,
+        "profit_potential": round(potential - lot_price, 2) if lot_price is not None else None,
+    }
+    return units, summary, attention
+
+
 COMPUTER_FORMULA_COLS = ["win11_override", "manual_notes", "win11_effective", "ram_mb_effective", "sold"]
 SALES_FORMULA_COLS = ["Type", "Model", "Price used", "Fees used", "Shipping used", "Net",
                       "Date used", "Platform used", "Machines in order", "Check"]
@@ -392,6 +539,21 @@ def _build(wb, wbf, path, raw_dir):
             for i, h in enumerate(header):
                 if h:
                     lists[h] = [r[i] for r in rows[1:] if i < len(r) and r[i] is not None]
+
+    # Listings is optional: without it the dashboard works as before.
+    listing_rows, listing_cols = [], []
+    has_listings = "Listings" in wb.sheetnames
+    if has_listings:
+        rows = wb["Listings"].iter_rows(values_only=True)
+        header = [clean(h) for h in next(rows, [])]
+        listing_cols = [h for h in header if h]
+        if "Asset ID" not in header:
+            warn.append("The Listings tab has no 'Asset ID' column in row 1, so listings are ignored.")
+        else:
+            for row_no, r in enumerate(rows, start=2):
+                rec = {h: clean(r[i]) if i < len(r) else None for i, h in enumerate(header) if h}
+                if rec.get("Asset ID") is not None:
+                    listing_rows.append((row_no, rec))
 
     # ---- Indexes -----------------------------------------------------------
     # Excel's MATCH is case-insensitive, so the lookups here are too.
@@ -551,6 +713,19 @@ def _build(wb, wbf, path, raw_dir):
         kpis["break_even_remaining"] = 0 if lot_price and net >= lot_price else None
         kpis["break_even_units"] = 0 if kpis["break_even_remaining"] == 0 else None
 
+    # ---- Listings and potential ---------------------------------------------
+    if has_listings:
+        sale_by_upper = {}
+        for s in sales:
+            sale_by_upper.setdefault(_uid(s["asset_id"]), s)
+        listing_units, listings, listing_attention = build_listings(
+            listing_rows, out_comp, items, set(sale_by_upper), sale_by_upper, net, lot_price)
+    else:
+        listing_units, listing_attention = [], []
+        listings = {"present": False}
+    kpis["net_sales_potential"] = listings.get("net_sales_potential")
+    kpis["profit_potential"] = listings.get("profit_potential")
+
     # By type (machines) -- scanned + master-only.
     by_type = OrderedDict()
     for c in out_comp:
@@ -655,6 +830,8 @@ def _build(wb, wbf, path, raw_dir):
             attention.append({"level": "warning", "kind": f"Master status {code}",
                               "asset_id": m["Asset ID"], "text": m.get("Notes") or ""})
 
+    attention.extend(listing_attention)
+
     # Cross-check against the workbook's own Selling Dashboard totals.
     checks = []
     for label, ours in [("Units sold", kpis["units_sold"]), ("Gross sales", kpis["gross"]),
@@ -674,6 +851,8 @@ def _build(wb, wbf, path, raw_dir):
         sheets[name] = None
     sheets.update({"Computers": len(computers), "Sales": len(sales_raw), "Master": len(master),
                    "Items": len(items), "Bulk": len(bulk)})
+    if has_listings:
+        sheets["Listings"] = len(listing_rows)
 
     return {
         "meta": {
@@ -706,4 +885,7 @@ def _build(wb, wbf, path, raw_dir):
         "summary_rows": summary_rows,
         "lists": lists,
         "attention": attention,
+        "listings": listings,
+        "listing_units": listing_units,
+        "listing_cols": listing_cols,
     }

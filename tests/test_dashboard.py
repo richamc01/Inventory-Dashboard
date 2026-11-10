@@ -217,3 +217,83 @@ def test_real_workbook():
     for c in s["computers"]:
         if c["source"] == "scan":
             assert c["scan_files"], c["asset_id"]
+
+
+# ---- Listings tab and potential ---------------------------------------------
+
+@pytest.fixture()
+def lsnap(tmp_path):
+    path = build(str(tmp_path), listings=True)
+    return build_snapshot(path, str(tmp_path / "inventory-raw"))
+
+
+def unit(snap, uid):
+    return next(u for u in snap["listing_units"] if u["id"] == uid)
+
+
+def test_no_listings_tab(snap):
+    assert snap["listings"] == {"present": False}
+    assert snap["listing_units"] == []
+    assert snap["kpis"]["net_sales_potential"] is None
+    assert snap["kpis"]["profit_potential"] is None
+    assert not any("isting" in a["kind"] for a in snap["attention"])
+
+
+def test_potential_math(lsnap):
+    L = lsnap["listings"]
+    # Sold net: DT-001 90 + DT-002 50 + SV-001 50.
+    assert L["sold_net"] == 190
+    # Counted asking prices: DT-003 80 (Listed), DT-010 60 (Pending), MON-001 40 (Listed item).
+    assert L["asking_total"] == 180
+    assert L["net_sales_potential"] == 370
+    assert L["profit_potential"] == 370 - 500
+    assert lsnap["kpis"]["net_sales_potential"] == 370
+    assert lsnap["kpis"]["profit_potential"] == -130
+    assert L["active_priced"] == 3 and L["active_unpriced"] == 1   # SER-RAM-2 has no price
+
+
+def test_sold_unit_counted_once_at_sale_net(lsnap):
+    u = unit(lsnap, "DT-001")
+    assert u["status"] == "Sold" and u["asking"] == 150 and u["counts"] is False and u["sale_net"] == 90
+
+
+def test_statuses(lsnap):
+    assert unit(lsnap, "DT-003")["status"] == "Listed"
+    assert unit(lsnap, "DT-010")["status"] == "Pending"          # 'pending' typed in lower case
+    assert unit(lsnap, "SER-RAM-1")["status"] == "Needs listed" and not unit(lsnap, "SER-RAM-1")["counts"]
+    assert unit(lsnap, "AIO-004")["status"] == "Removed" and not unit(lsnap, "AIO-004")["counts"]
+    assert unit(lsnap, "DT-002")["status"] == "Sold" and not unit(lsnap, "DT-002")["has_listing_row"]
+    assert unit(lsnap, "MON-001")["kind"] == "Item"
+    counts = {s["label"]: s["count"] for s in lsnap["listings"]["status_counts"]}
+    # 6 machines + 4 items; XX-999 matches nothing and is not a unit.
+    assert counts == {"Sold": 3, "Pending": 1, "Listed": 3, "Needs listed": 1, "Removed": 1, "On hold": 1}
+    assert sum(counts.values()) == 10
+
+
+def test_listing_problems_flagged(lsnap):
+    kinds = {(a["kind"], a["asset_id"]) for a in lsnap["attention"]}
+    assert ("Listing on two rows", "dt-003") in kinds
+    assert ("Listing ID not found", "XX-999") in kinds
+    assert ("No asking price", "SER-RAM-2") in kinds
+    assert ("Unknown listing status", "SER-RAM-3") in kinds
+    # The duplicate row's 999 is ignored; the first row's 80 is used.
+    assert unit(lsnap, "DT-003")["asking"] == 80
+    assert not unit(lsnap, "XX-999")["counts"] and not unit(lsnap, "SER-RAM-3")["counts"]
+    # A sold machine still on the Listings tab is normal, not a problem.
+    assert not any(a["asset_id"] == "DT-001" and "isting" in a["kind"] for a in lsnap["attention"])
+
+
+def test_listing_urls_and_drawer(lsnap):
+    assert unit(lsnap, "DT-003")["url"] is None                     # javascript: link dropped
+    assert unit(lsnap, "MON-001")["url"] == "https://example.com/listing/1"
+    c = comp(lsnap, "DT-003")
+    assert c["listing"]["status"] == "Listed" and c["listing"]["asking"] == 80 and c["listing"]["counts"]
+    assert comp(lsnap, "DT-002")["listing"]["has_listing_row"] is False
+
+
+def test_listings_api(tmp_path):
+    path = build(str(tmp_path), listings=True)
+    app = create_app(path, str(tmp_path / "inventory-raw"))
+    body = app.test_client().get("/api/data").get_json()
+    assert body["listings"]["net_sales_potential"] == 370
+    assert body["meta"]["sheets"]["Listings"] == 10

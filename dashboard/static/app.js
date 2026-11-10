@@ -10,6 +10,7 @@ const state = {
   openAsset: null,
   inv: { q: "", type: "", model: "", status: "", sold: "unsold", win11: "", drive: "", sort: "asset_id", dir: 1 },
   sales: { q: "", platform: "", type: "", sort: "date", dir: -1 },
+  listings: { q: "", status: "", kind: "", sort: "status", dir: 1 },
   fleetScope: "unsold",
   itemType: "",
 };
@@ -211,6 +212,7 @@ function viewOverview(d) {
       <div class="sub">of ${money(k.lot_price)} paid for the lot</div></div>
     <div class="tile"><div class="label">${(k.profit || 0) >= 0 ? "Profit" : "Still to recover"}</div>
       <div class="value ${profitCls}">${money(Math.abs(k.profit))}</div><div class="sub">${esc(breakEven)}</div></div>` : ""}
+    ${potentialTiles(d)}
     <div class="tile"><div class="label">Units sold</div><div class="value">${k.units_sold}</div>
       <div class="sub">${k.orders} order${k.orders === 1 ? "" : "s"}${k.first_sale ? ` · ${fmtDate(k.first_sale)} – ${fmtDate(k.last_sale)}` : ""}</div></div>
     <div class="tile"><div class="label">Average net per unit</div><div class="value">${money(k.avg_net, { blank: "–" })}</div>
@@ -241,6 +243,94 @@ function viewOverview(d) {
     <div class="card"><h2>Net by model sold</h2>${hbars(d.by_model_sold.map(p => ({ label: p.label, value: p.net, tip: `${p.label}\n${p.count} sold · net ${money(p.net)}` })), money)}</div>
   </div>
   ${attn}`;
+}
+
+// Net sales potential = actual net of everything sold + asking prices of
+// unsold units whose listing status is Listed or Pending.
+function potentialTiles(d) {
+  const L = d.listings || {};
+  if (!L.present) return "";
+  const k = d.kpis;
+  const unpriced = L.active_unpriced ? ` · ${L.active_unpriced} without a price not counted` : "";
+  const profit = L.profit_potential;
+  return `<div class="tile"><div class="label">Net sales potential</div><div class="value">${money(L.net_sales_potential)}</div>
+      <div class="sub">Sold net ${money(L.sold_net)} + asking ${money(L.asking_total)} (${L.active_priced} listed or pending)${unpriced}</div></div>
+    ${profit !== null && profit !== undefined ? `<div class="tile"><div class="label">Total profit potential</div>
+      <div class="value ${profit >= 0 ? "pos" : ""}">${money(profit)}</div>
+      <div class="sub">Net sales potential minus ${money(k.lot_price)} lot cost</div></div>` : ""}`;
+}
+
+const STATUS_RANK = { "Sold": 0, "Pending": 1, "Listed": 2, "Needs listed": 3, "Not listed": 4, "Removed": 5 };
+
+function listingBadge(status) {
+  const level = { "Sold": "good", "Pending": "warning", "Listed": "info", "Needs listed": "serious" }[status];
+  if (status === "Sold") return `<span class="badge sold">Sold</span>`;
+  return level ? statusBadge(level, status) : `<span class="badge">${esc(status)}</span>`;
+}
+
+function viewListings(d) {
+  const L = d.listings || {};
+  if (!L.present) {
+    return `<div class="card"><h2>Listings</h2><div class="empty">No Listings tab found in the workbook. Add one to see listing status, asking prices and the sales potential.</div></div>`;
+  }
+  const f = state.listings;
+  const q = f.q.trim().toLowerCase();
+  const all = d.listing_units;
+  let rows = all.filter(u =>
+    (!f.status || u.status === f.status) &&
+    (!f.kind || u.kind === f.kind) &&
+    (!q || [u.id, u.serial, u.type, u.model, u.detail, u.platform, u.listing_notes]
+      .some(v => v !== null && v !== undefined && String(v).toLowerCase().includes(q))));
+  const getter = (u, key) => key === "status" ? (STATUS_RANK[u.status] ?? 9) : key === "asset_id" ? u.id : u[key];
+  rows = applySort(rows.map(u => ({ ...u, asset_id: u.id })), f, getter);
+  const cols = [
+    { key: "asset_id", label: "ID" }, { key: "kind", label: "Kind" }, { key: "type", label: "Type" },
+    { key: "model", label: "Model" }, { key: "detail", label: "Spec" }, { key: "status", label: "Status" },
+    { key: "asking", label: "Asking", num: true }, { key: "sale_net", label: "Sold net", num: true },
+    { key: "date_listed", label: "Listed on" }, { key: "platform", label: "Platform" },
+    { key: "counts", label: "In potential" }, { key: "listing_notes", label: "Notes" },
+  ];
+  const body = rows.map(u => {
+    const idCell = u.id ? (u.kind === "Computer" ? assetLink(u.id) : esc(u.id)) : '<span class="dim">no ID</span>';
+    const inPot = u.status === "Sold" ? `<span class="dim">at sale net</span>` : u.counts ? "Yes" : "";
+    return `<tr>
+      <td class="nowrap">${idCell}</td><td>${esc(u.kind)}</td><td>${esc(u.type)}</td><td class="nowrap">${esc(u.model)}</td>
+      <td class="nowrap small">${esc(u.detail)}</td><td class="nowrap">${listingBadge(u.status)}</td>
+      <td class="num">${money(u.asking)}</td><td class="num">${money(u.sale_net)}</td>
+      <td class="nowrap">${fmtDate(u.date_listed)}</td><td class="nowrap">${esc(u.platform)}${u.url ? ` <a href="${esc(u.url)}" target="_blank" rel="noopener noreferrer">link</a>` : ""}</td>
+      <td class="nowrap">${inPot}</td><td class="wrap small">${esc(u.listing_notes)}</td></tr>`;
+  }).join("");
+  const counted = rows.filter(u => u.counts);
+  const foot = rows.length ? `<tfoot><tr><td colspan="6">Shown (${rows.length})</td>
+      <td class="num">${money(counted.reduce((a, u) => a + u.asking, 0))}</td>
+      <td class="num">${money(rows.reduce((a, u) => a + (Number(u.sale_net) || 0), 0))}</td><td colspan="4" class="muted small">Asking total counts Listed and Pending only</td></tr></tfoot>` : "";
+  const statuses = L.status_counts.map(s => s.label);
+  const tiles = `<div class="tiles">
+    ${potentialTiles(d)}
+    <div class="tile"><div class="label">Listed or pending</div><div class="value">${L.active}</div>
+      <div class="sub">${L.listed} listed · ${L.pending} pending · asking ${money(L.asking_total)}</div></div>
+    <div class="tile"><div class="label">Needs listed</div><div class="value">${L.needs_listed}</div>
+      <div class="sub">${(L.status_counts.find(s => s.label === "Not listed") || { count: 0 }).count} not listed yet</div></div>
+  </div>`;
+  return `${tiles}
+  <div class="grid cols-2" style="margin-top:16px">
+    <div class="card"><h2>Units by listing status</h2>${hbars(L.status_counts.map(s => ({ label: s.label, value: s.count, tip: `${s.label}: ${s.count} unit${s.count === 1 ? "" : "s"}` })), v => v)}
+      <p class="muted small">Every machine and item appears once. Sold comes from the Sales tab and overrides the Listings status.</p></div>
+    <div class="card"><h2>How the potential is worked out</h2><dl class="kv">
+      <dt>Sold</dt><dd>Actual net from the Sales tab, after fees and shipping: ${money(L.sold_net)}</dd>
+      <dt>Listed and Pending</dt><dd>Asking price as entered, no fees or shipping taken off: ${money(L.asking_total)}</dd>
+      <dt>Not counted</dt><dd>Needs listed, Not listed, Removed, and Listed or Pending rows with no asking price</dd>
+      <dt>Profit potential</dt><dd>Net sales potential minus the lot cost</dd></dl></div>
+  </div>
+  <div class="card">
+    <div class="filters">
+      <input type="search" id="l-q" placeholder="Search ID, serial, model, spec, notes…" value="${esc(f.q)}">
+      <select id="l-status">${options(statuses, f.status, "Any status")}</select>
+      <select id="l-kind">${options(uniq(all.map(u => u.kind)), f.kind, "Machines and items")}</select>
+      <span class="count">${rows.length} of ${all.length} units</span>
+    </div>
+    <div class="table-wrap"><table><thead>${sortHeader(cols, f)}</thead><tbody>${body || `<tr><td colspan="12" class="empty">Nothing matches these filters.</td></tr>`}</tbody>${foot}</table></div>
+  </div>`;
 }
 
 function attentionCard(list) {
@@ -320,12 +410,14 @@ function inventoryRows(d) {
 
 function viewInventory(d) {
   const f = state.inv;
-  const rows = applySort(inventoryRows(d), f);
+  const rows = applySort(inventoryRows(d), f, (c, k) => k === "listing_status"
+    ? (c.listing && !c.is_sold ? STATUS_RANK[c.listing.status] ?? 9 : null) : c[k]);
   const cols = [
     { key: "asset_id", label: "Asset" }, { key: "type", label: "Type" }, { key: "model", label: "Model" },
     { key: "cpu_short", label: "CPU" }, { key: "cpu_gen", label: "Gen", num: true }, { key: "ram_gb", label: "RAM", num: true },
     { key: "drives", label: "Drive" }, { key: "win11_eff", label: "Win11" }, { key: "tpm_visible", label: "TPM" },
-    { key: "status", label: "Status" }, { key: "is_sold", label: "Sold" }, { key: "manual_notes", label: "Notes" },
+    { key: "status", label: "Status" }, { key: "is_sold", label: "Sold" }, { key: "listing_status", label: "Listing" },
+    { key: "manual_notes", label: "Notes" },
   ];
   const body = rows.map(c => {
     const st = c.status === "OK" ? statusBadge("good", "OK") : statusBadge(c.source === "master-only" ? "info" : "warning", c.status || "–");
@@ -337,6 +429,7 @@ function viewInventory(d) {
       <td class="nowrap">${c.has_drive ? esc(c.drives) : c.source === "master-only" ? "" : '<span class="dim">none</span>'}</td>
       <td class="nowrap">${esc(c.win11_eff)}</td><td>${tpm}</td><td>${st}</td>
       <td>${c.is_sold ? `<span class="badge sold">Sold${c.sale && c.sale.net !== null ? " · " + money(c.sale.net) : ""}</span>` : ""}</td>
+      <td class="nowrap">${c.listing && !c.is_sold ? listingBadge(c.listing.status) + (c.listing.asking !== null ? " " + money(c.listing.asking) : "") : ""}</td>
       <td class="wrap small">${esc(c.manual_notes)}</td></tr>`;
   }).join("");
   const all = d.computers;
@@ -354,7 +447,7 @@ function viewInventory(d) {
       <button type="button" id="i-reset">Reset</button>
       <span class="count">${rows.length} of ${all.length} machines</span>
     </div>
-    <div class="table-wrap"><table><thead>${sortHeader(cols, f)}</thead><tbody>${body || `<tr><td colspan="12" class="empty">No machines match these filters.</td></tr>`}</tbody></table></div>
+    <div class="table-wrap"><table><thead>${sortHeader(cols, f)}</thead><tbody>${body || `<tr><td colspan="13" class="empty">No machines match these filters.</td></tr>`}</tbody></table></div>
     <p class="muted small">Click a row for every scanned field, Master notes, the sale, and the full scan file.</p>
   </div>`;
 }
@@ -513,6 +606,16 @@ function openDrawer(id) {
       ["Notes", esc(s.notes)], ["Check", s.check === "OK" ? statusBadge("good", "OK") : statusBadge("serious", s.check)],
     ]);
   }
+  if (c.listing && (c.listing.has_listing_row || !c.is_sold)) {
+    const l = c.listing;
+    html += `<h3>Listing</h3>` + (l.has_listing_row ? kv([
+      ["Status", listingBadge(l.status)], ["Status on the Listings tab", esc(l.listing_status)],
+      ["Asking price", money(l.asking)], ["Listed on", fmtDate(l.date_listed)], ["Platform", esc(l.platform)],
+      ["Listing", l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.url)}</a>` : ""],
+      ["Notes", esc(l.listing_notes)],
+      ["In the potential", l.status === "Sold" ? "At its sale net" : l.counts ? "Yes, at the asking price" : "No"],
+    ]) : `<div class="empty">Not on the Listings tab, so it shows as Not listed.</div>`);
+  }
   if (c.source === "scan") {
     html += `<h3>Scan row (Computers tab)</h3>` + kv(SCAN_FIELDS.map(([k, label]) => [label, esc(c[k])]));
   }
@@ -567,7 +670,7 @@ function closeDrawer() {
 
 /* ---------------- render & routing ---------------- */
 
-const VIEWS = { overview: viewOverview, sales: viewSales, inventory: viewInventory, fleet: viewFleet, hardware: viewHardware, notes: viewNotes, data: viewData };
+const VIEWS = { overview: viewOverview, sales: viewSales, listings: viewListings, inventory: viewInventory, fleet: viewFleet, hardware: viewHardware, notes: viewNotes, data: viewData };
 
 function render() {
   for (const a of document.querySelectorAll("#tabs a")) a.classList.toggle("active", a.dataset.tab === state.tab);
@@ -614,12 +717,14 @@ document.addEventListener("input", e => {
   const id = e.target.id;
   if (id === "s-q") { state.sales.q = e.target.value; render(); }
   if (id === "i-q") { state.inv.q = e.target.value; render(); }
+  if (id === "l-q") { state.listings.q = e.target.value; render(); }
 });
 
 document.addEventListener("change", e => {
   const id = e.target.id, v = e.target.value;
   const map = { "s-platform": ["sales", "platform"], "s-type": ["sales", "type"], "i-type": ["inv", "type"], "i-model": ["inv", "model"],
-    "i-win11": ["inv", "win11"], "i-status": ["inv", "status"], "i-drive": ["inv", "drive"] };
+    "i-win11": ["inv", "win11"], "i-status": ["inv", "status"], "i-drive": ["inv", "drive"],
+    "l-status": ["listings", "status"], "l-kind": ["listings", "kind"] };
   if (map[id]) { state[map[id][0]][map[id][1]] = v; render(); }
   if (id === "h-type") { state.itemType = v; render(); }
   if (id === "scan-file" && state.openAsset) loadScan(state.openAsset, v);
@@ -642,7 +747,7 @@ document.addEventListener("click", e => {
   }
   const th = t.closest("th.sortable");
   if (th) {
-    const s = state.tab === "sales" ? state.sales : state.inv;
+    const s = state.tab === "sales" ? state.sales : state.tab === "listings" ? state.listings : state.inv;
     if (s.sort === th.dataset.sort) s.dir = -s.dir; else { s.sort = th.dataset.sort; s.dir = 1; }
     render();
     return;
