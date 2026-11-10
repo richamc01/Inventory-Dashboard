@@ -84,7 +84,7 @@ button:hover { background: var(--surface-2); }
 #banner { padding: 10px 20px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 #banner .item { margin: 2px 0; }
 
-main { padding: 20px; max-width: 1500px; margin: 0 auto; }
+main { padding: 20px; max-width: 2400px; margin: 0 auto; }
 
 /* Cards & layout */
 .grid { display: grid; gap: 16px; }

@@ -310,9 +310,9 @@ function viewListings(d) {
     const inPot = u.status === "Sold" ? `<span class="dim">at sale net</span>` : u.counts ? "Yes" : "";
     return `<tr>
       <td class="nowrap">${idCell}</td><td>${esc(u.kind)}</td><td>${typeCell(u.type)}</td><td class="nowrap">${esc(u.model)}</td>
-      <td class="nowrap small">${esc(u.detail)}</td><td class="nowrap">${listingBadge(u.status)}</td>
+      <td class="small">${esc(u.detail)}</td><td class="nowrap">${listingBadge(u.status)}</td>
       <td class="num">${money(u.asking)}</td><td class="num">${money(u.sale_net)}</td>
-      <td class="nowrap">${fmtDate(u.date_listed)}</td><td class="nowrap">${esc(u.platform)}${u.url ? ` <a href="${esc(u.url)}" target="_blank" rel="noopener noreferrer">link</a>` : ""}</td>
+      <td class="nowrap">${fmtDate(u.date_listed)}</td><td>${esc(u.platform)}${u.url ? ` <a href="${esc(u.url)}" target="_blank" rel="noopener noreferrer">link</a>` : ""}</td>
       <td class="nowrap">${inPot}</td><td class="wrap small">${esc(u.listing_notes)}</td></tr>`;
   }).join("");
   const counted = rows.filter(u => u.counts);
@@ -398,7 +398,7 @@ function viewSales(d) {
       <td class="nowrap">${fmtDate(s.date)}</td><td class="nowrap">${esc(s.order_id)}${s.machines_in_order > 1 ? ` <span class="dim small">(${s.machines_in_order})</span>` : ""}</td>
       <td class="nowrap">${assetLink(s.asset_id)}</td><td>${typeCell(s.type)}</td><td class="nowrap">${esc(s.model)}</td>
       <td class="num">${money(s.price)}</td><td class="num">${money(s.fees)}</td><td class="num">${money(s.shipping)}</td>
-      <td class="num">${money(s.net)}</td><td class="nowrap">${esc(s.platform)}</td><td>${esc(s.payment)}</td>
+      <td class="num">${money(s.net)}</td><td>${esc(s.platform)}</td><td>${esc(s.payment)}</td>
       <td>${esc(s.buyer)}</td><td class="wrap">${esc(s.sold_with)}</td><td class="wrap">${esc(s.notes)}</td><td>${check}</td></tr>`;
   }).join("");
   const sum = k => rows.reduce((a, s) => a + (Number(s[k]) || 0), 0);
@@ -451,7 +451,7 @@ function viewInventory(d) {
       <td class="nowrap"><a href="#inventory/${encodeURIComponent(c.asset_id)}" data-asset="${esc(c.asset_id)}">${esc(c.asset_id)}</a></td>
       <td>${typeCell(c.type)}</td><td class="nowrap">${esc(c.model)}</td><td class="nowrap">${esc(c.cpu_short)}${noteMark(c, "cpu")}</td>
       <td class="num">${esc(c.cpu_gen)}</td><td class="num">${esc(ramLabel(c.ram_gb))}${noteMark(c, "ram")}</td>
-      <td class="nowrap">${c.has_drive ? esc(c.drives) : c.source === "master-only" && !(c.note_overrides || {}).drives ? "" : '<span class="dim">none</span>'}${noteMark(c, "drives")}</td>
+      <td class="wrap">${c.has_drive ? esc(c.drives) : c.source === "master-only" && !(c.note_overrides || {}).drives ? "" : '<span class="dim">none</span>'}${noteMark(c, "drives")}</td>
       <td class="nowrap">${esc(c.win11_eff)}</td><td>${tpm}</td><td>${st}</td>
       <td>${c.is_sold ? `<span class="badge sold">Sold${c.sale && c.sale.net !== null ? " · " + money(c.sale.net) : ""}</span>` : ""}</td>
       <td class="nowrap">${c.listing && !c.is_sold ? listingBadge(c.listing.status) + (c.listing.asking !== null ? " " + money(c.listing.asking) : "") : ""}</td>
