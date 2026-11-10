@@ -1,0 +1,376 @@
+<div class="guide">
+
+<div class="card">
+  <h2>How to use the Hardware Inventory workbook</h2>
+  <p>Everything you need to keep <strong>Hardware Inventory.xlsx</strong> up to date, one task at a time. Each task lists the tab, the exact cells, and what to check afterwards.</p>
+  <nav class="toc">
+    <span class="muted small">Jump to:</span>
+    <a href="" data-jump="g-rules">Ground rules</a>
+    <a href="" data-jump="g-tabs">The tabs</a>
+    <a href="" data-jump="g-codes">Type codes</a>
+    <a href="" data-jump="g-scan">Add scanned computers</a>
+    <a href="" data-jump="g-master">Problems and overrides</a>
+    <a href="" data-jump="g-items">Add items and RAM</a>
+    <a href="" data-jump="g-bulk">Add bulk bins</a>
+    <a href="" data-jump="g-scanner">Scanner Tab/Enter</a>
+    <a href="" data-jump="g-list">List something for sale</a>
+    <a href="" data-jump="g-sale">Record a sale</a>
+    <a href="" data-jump="g-checks">Sale check messages</a>
+    <a href="" data-jump="g-lot">Lot price and totals</a>
+    <a href="" data-jump="g-lists">Change a drop-down</a>
+    <a href="" data-jump="g-dont">Things that break the workbook</a>
+    <a href="" data-jump="g-save">Saving</a>
+    <a href="" data-jump="g-dash">Using this dashboard</a>
+    <a href="" data-jump="g-health">Fixing health problems</a>
+    <a href="" data-jump="g-update">Updating the dashboard</a>
+  </nav>
+</div>
+
+<div class="card" id="g-rules">
+  <h2>Ground rules</h2>
+  <ul class="rules">
+    <li><strong>Never type in a formula column.</strong> On the Sales and Listings tabs those have grey headers. On the Computers tab, columns <strong>U to Y</strong> are formulas too, even though their headers are blue.</li>
+    <li><strong>One row = one thing.</strong> One machine, one RAM module, one bin, one sale, one listing.</li>
+    <li><strong>Asset IDs never change and are never reused</strong>, even for a scrapped or sold machine.</li>
+    <li><strong>To remove values, select the cells and press <kbd>Delete</kbd>.</strong> Don't use right-click &gt; Delete (that removes whole rows and shifts the formulas).</li>
+    <li><strong>When you paste into the workbook, paste values</strong> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>, then <kbd>V</kbd>, then <kbd>Enter</kbd>). A normal paste brings in the source's formatting and wipes the grey sold-row shading.</li>
+    <li><strong>Save and close Excel when you're done.</strong> The dashboard reads the saved file, and Nextcloud syncs it to the server.</li>
+  </ul>
+</div>
+
+<div class="card" id="g-tabs">
+  <h2>The tabs at a glance</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Tab</th><th>What it holds</th><th>Do you type in it?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>README</strong></td><td>The original written instructions. This page replaces it for day-to-day use.</td><td>No</td></tr>
+      <tr><td><strong>Summary</strong></td><td>Counts: computers by type, Windows 11 results, scan status, items, bulk units, Master rows.</td><td>No, all calculated</td></tr>
+      <tr><td><strong>Selling Dashboard</strong></td><td>Sales totals, lot cost recovered, profit, and breakdowns by type, platform and month.</td><td>Only the yellow cell B3 (lot price)</td></tr>
+      <tr><td><strong>Items</strong></td><td>Labeled hardware (MON, NW, UPS, PSU, MB, CH, MS) and RAM modules, one row each.</td><td>Yes, columns A to H</td></tr>
+      <tr><td><strong>Bulk</strong></td><td>Bins of cables, keyboards and power bricks, one row per bin.</td><td>Yes, columns A to E</td></tr>
+      <tr><td><strong>Computers</strong></td><td>One row per scanned machine, pasted from <code>inventory.csv</code>.</td><td>Paste into A to T only. U to Y are formulas.</td></tr>
+      <tr><td><strong>Master</strong></td><td>Exceptions: machines that never scanned, Windows 11 overrides, and notes.</td><td>Yes, columns A to H</td></tr>
+      <tr><td><strong>Sales</strong></td><td>One row per thing sold.</td><td>Blue columns A to C and F to P. Grey D, E and Q to X are formulas.</td></tr>
+      <tr><td><strong>Listings</strong></td><td>One row per thing you have listed (or plan to list), with status and asking price.</td><td>Columns A to G. H is a formula.</td></tr>
+      <tr><td><strong>Lists</strong></td><td>The values behind every drop-down, and the Type codes table.</td><td>Rarely. See <a href="" data-jump="g-lists">Change a drop-down</a>.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card" id="g-codes">
+  <h2>Type codes</h2>
+  <p>Every asset ID starts with a type code, then a dash and three digits, for example <code>DT-007</code>. RAM has no label; its own barcode (serial) is its ID. Anywhere on the dashboard, hover over a type code to see its meaning.</p>
+  <!--TYPE_CODES-->
+  <p class="muted small">This table comes from the Lists tab, columns J to L. Edit it there and the dashboard follows.</p>
+</div>
+
+<div class="card" id="g-scan">
+  <h2>Add scanned computers (Computers tab)</h2>
+  <p><strong>When:</strong> after running <code>inv.sh</code> on one or more machines. <strong>Scanner:</strong> must be on Enter (see <a href="" data-jump="g-scanner">Scanner Tab/Enter</a>).</p>
+  <h3>First import</h3>
+  <ol class="steps">
+    <li>Plug the <strong>INVENTORY</strong> USB stick into this PC.</li>
+    <li>In File Explorer, open the INVENTORY stick and double-click <code>inventory.csv</code>. It opens in Excel.</li>
+    <li>In <code>inventory.csv</code>, click cell <strong>A2</strong> (the first row under the header).</li>
+    <li>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>End</kbd>. This selects from A2 to the last used cell (column T of the last row).</li>
+    <li>Press <kbd>Ctrl</kbd>+<kbd>C</kbd>.</li>
+    <li>Switch to <strong>Hardware Inventory.xlsx</strong> and click the <strong>Computers</strong> tab at the bottom.</li>
+    <li>Click cell <strong>A2</strong>.</li>
+    <li>Paste values: press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>, press <kbd>V</kbd> (Values), press <kbd>Enter</kbd>.<br>
+      <span class="muted">Or with the mouse: Home tab &gt; the arrow under <strong>Paste</strong> &gt; under Paste Values, click the first icon (<strong>Values</strong>).</span></li>
+    <li>Check: the last pasted column is <strong>T</strong> (<code>detail_file</code>), and columns U to Y still show their results.</li>
+    <li>Close <code>inventory.csv</code> without saving.</li>
+  </ol>
+  <div class="tip"><strong>Why paste values?</strong> The workbook's README tab says <kbd>Ctrl</kbd>+<kbd>V</kbd>. That works for the data, but a normal paste also copies the CSV's plain formatting over the grey "sold" shading on A to T. Paste Values keeps the shading. If you do use <kbd>Ctrl</kbd>+<kbd>V</kbd> by habit, nothing else breaks; the Data tab's Workbook health will tell you the shading rule now covers fewer cells.</div>
+  <h3>Refresh after more scans</h3>
+  <ol class="steps">
+    <li>On the Computers tab, click the box left of the formula bar (the Name Box), type <code>A2:T500</code>, press <kbd>Enter</kbd>.</li>
+    <li>Press <kbd>Delete</kbd>. This clears only the pasted scan data; columns U to Y are not touched.</li>
+    <li>Repeat the first import steps 2 to 10 with the full <code>inventory.csv</code> (it holds every scan, old and new).</li>
+  </ol>
+  <h3>What columns U to Y do (formulas, even though the headers are blue: don't type in them)</h3>
+  <dl class="kv">
+    <dt>U win11_override</dt><dd>Copied from the Master tab, column G, for that asset ID.</dd>
+    <dt>V manual_notes</dt><dd>Copied from the Master tab, column H.</dd>
+    <dt>W win11_effective</dt><dd>U if set, otherwise the scanned win11 result.</dd>
+    <dt>X ram_mb_effective</dt><dd>0 when the Master notes contain <code>real RAM = none</code>, otherwise the scanned RAM.</dd>
+    <dt>Y sold</dt><dd>SOLD when the asset ID is on the Sales tab. The row turns grey.</dd>
+  </dl>
+  <h3>Scan files</h3>
+  <p>The dashboard shows each machine's full scan from the <code>inventory-raw</code> folder next to the workbook. Keep each scan <code>.txt</code> file there with its original name (it starts with the asset ID, for example <code>DT-007_ABC1234.txt</code>). A re-scan adds a second file; the dashboard lists both.</p>
+</div>
+
+<div class="card" id="g-master">
+  <h2>Record problems and overrides (Master tab)</h2>
+  <p><strong>Use it for:</strong> machines that never reach the scan, Windows 11 overrides, and notes about any machine. A machine can be on both Master and Computers; that's normal.</p>
+  <ol class="steps">
+    <li>Click the <strong>Master</strong> tab, then the first empty cell in column <strong>A</strong>.</li>
+    <li><strong>A Asset ID:</strong> scan the label or type it.</li>
+    <li><strong>B Service Tag, C Model, D Type, F Date:</strong> optional. No formula uses them.</li>
+    <li><strong>E Status code:</strong> pick from the drop-down if the machine has a problem (table below). Leave blank or <code>OK</code> otherwise.</li>
+    <li><strong>G Win11 override:</strong> pick a code only if you checked the BIOS (table below).</li>
+    <li><strong>H Notes:</strong> anything worth knowing. These show on the Computers tab (column V) and in the dashboard.</li>
+  </ol>
+  <div class="tip"><strong>Borrowed RAM:</strong> if a machine was scanned with a test DIMM that you then removed, write <code>TEST DIMM USED, real RAM = none</code> in column H. The Computers tab then counts its RAM as 0.</div>
+  <h3>Status codes (column E)</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Code</th><th>Means</th></tr></thead>
+    <tbody>
+      <tr><td><code>OK</code></td><td>Works (or fixed). Also used with <code>HAND-RECORDED</code> in Notes when specs were read from BIOS photos.</td></tr>
+      <tr><td><code>NO-POWER</code></td><td>Power button does nothing: no fans, no lights.</td></tr>
+      <tr><td><code>NO-RAM</code></td><td>Fans spin but no picture, and every DIMM slot is empty.</td></tr>
+      <tr><td><code>NO-POST</code></td><td>Fans spin but no picture, or beeps/light pattern, with RAM installed.</td></tr>
+      <tr><td><code>BOOT-BLOCKED</code></td><td>Won't boot from the USB stick.</td></tr>
+      <tr><td><code>BIOS-PW</code></td><td>Password prompt at power-on or in BIOS setup.</td></tr>
+      <tr><td><code>LIVE-FAIL</code></td><td>Ubuntu hangs, or the machine shuts off during the scan.</td></tr>
+      <tr><td><code>DEAD</code></td><td>Still fails after triage.</td></tr>
+      <tr><td><code>TODO</code></td><td>Work still to do on this machine (say what in Notes).</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Windows 11 codes (column G, and the scan's win11 column)</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Code</th><th>Means</th></tr></thead>
+    <tbody>
+      <tr><td><code>YES</code></td><td>8th gen Intel Core or newer, TPM 2.0 visible.</td></tr>
+      <tr><td><code>NO-CPU</code></td><td>Intel Core older than 8th generation.</td></tr>
+      <tr><td><code>CHECK-CPU</code></td><td>Not a standard Core name (Pentium, Celeron, Xeon, AMD, other).</td></tr>
+      <tr><td><code>NO-TPM12</code></td><td>8th gen or newer, but only TPM 1.2.</td></tr>
+      <tr><td><code>CHECK-TPM</code></td><td>8th gen or newer, no TPM visible (absent or switched off). Check the BIOS.</td></tr>
+      <tr><td><code>YES-IF-TPM-ON</code></td><td>BIOS has a TPM 2.0 (or PTT) that is switched off. Override only.</td></tr>
+      <tr><td><code>NO-TPM</code></td><td>No TPM or PTT entry in the BIOS at all. Override only.</td></tr>
+      <tr><td><code>N/A</code></td><td>Servers, network gear and other equipment.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card" id="g-items">
+  <h2>Add labeled items and RAM (Items tab)</h2>
+  <p><strong>Scanner:</strong> set it to Tab before you start, and back to Enter when you finish (see <a href="" data-jump="g-scanner">Scanner Tab/Enter</a>). Full per-item details are in <code>Other Hardware Inventory Method.md</code>.</p>
+  <h3>Labeled items (MON, NW, UPS, PSU, MB, CH, MS): one row per item</h3>
+  <ol class="steps">
+    <li>Click the first empty cell in column <strong>A</strong>. Scan the asset label. The cursor moves to B.</li>
+    <li>Scan the manufacturer's serial barcode. The cursor moves to C. <span class="muted">No serial: press <kbd>Tab</kbd>, and later type <code>NO SERIAL</code> in column H.</span></li>
+    <li><strong>C Type</strong> (drop-down), <kbd>Tab</kbd>. <strong>D Make</strong>, <kbd>Tab</kbd>. <strong>E Model</strong>, <kbd>Tab</kbd>.</li>
+    <li><strong>F Key spec</strong>, <kbd>Tab</kbd>. Monitor: screen size. Switch: port count. UPS: VA rating. PSU: wattage. Motherboard: socket. Chassis: height.</li>
+    <li><strong>G Condition</strong> (drop-down: Working, Untested, Faulty), <kbd>Tab</kbd>. <strong>H Notes</strong>.</li>
+    <li>Press <kbd>Enter</kbd>. Excel returns to column A of the next row.</li>
+  </ol>
+  <h3>RAM: one row per module</h3>
+  <p>RAM has no asset label. Column A stays empty, and the module's own barcode in column B is its ID.</p>
+  <ol class="steps">
+    <li>Sort the modules into piles of identical part numbers. Count one pile.</li>
+    <li>In the first empty row, fill C to H once: <strong>C</strong> <code>RAM</code>, <strong>D</strong> make, <strong>E</strong> part number, <strong>F</strong> form factor, size and speed code (for example <code>DIMM 8GB PC4-2400T</code>), <strong>G</strong> <code>Untested</code>.</li>
+    <li>Select column <strong>B</strong> from that row down to the pile's last row (first row + count &minus; 1). Scan each module. The cursor moves down inside the selection.<br><span class="muted">Don't scan past the last cell: it wraps to the top and overwrites it.</span></li>
+    <li>Select columns <strong>C to H</strong> for the pile's rows and press <kbd>Ctrl</kbd>+<kbd>D</kbd> to copy the details down.</li>
+    <li>Check: every value in column B is different.</li>
+  </ol>
+  <div class="tip">Write the Key spec the same way every time (for example <code>DIMM 8GB PC3L-12800U 2Rx8</code>). The dashboard reads size, generation (DDR3, DDR3L, DDR4), form factor and ECC from it.</div>
+</div>
+
+<div class="card" id="g-bulk">
+  <h2>Add bulk bins (Bulk tab)</h2>
+  <p>For cables, keyboards and power bricks. One row per bin. <strong>Scanner:</strong> Tab.</p>
+  <ol class="steps">
+    <li>Click the first empty cell in column <strong>A</strong>. Scan the <code>BIN</code> label. The cursor moves to B.</li>
+    <li><strong>B Item type</strong> (drop-down), <kbd>Tab</kbd>.</li>
+    <li><strong>C Spec</strong>, for example <code>DisplayPort to DisplayPort, 6 ft</code> or <code>Dell 130W 19.5V barrel</code>, <kbd>Tab</kbd>.</li>
+    <li><strong>D Quantity</strong> (whole number), <kbd>Tab</kbd>. <strong>E Condition</strong> (drop-down).</li>
+    <li>Press <kbd>Enter</kbd>.</li>
+  </ol>
+  <div class="tip">Never mix power bricks with different wattage, voltage or connector in one bin.</div>
+</div>
+
+<div class="card" id="g-scanner">
+  <h2>Scanner: switch between Tab and Enter</h2>
+  <p>The Tera HW0002 scanner sends a key after each barcode. <strong>Enter</strong> for computer scans (<code>inv.sh</code>). <strong>Tab</strong> for the Items and Bulk tabs. Change it only twice: to Tab before Items/Bulk work, back to Enter when done.</p>
+  <ol class="steps">
+    <li>Open the Tera HW0002 manual to the page titled <strong>Terminators</strong> (page 10). It has five barcodes in a row.</li>
+    <li><strong>For Tab:</strong> scan the fourth barcode, <em>Add Horizontal Tab&lt;HT&gt; (0x09)</em>.</li>
+    <li><strong>For Enter:</strong> scan the first barcode, <em>Add Carriage Return&lt;CR&gt; (0x0D)*</em>.</li>
+    <li>Test in Notepad: scan any barcode. Enter moves the cursor to a new line. Tab jumps it right.</li>
+    <li>If it acts strangely: scan <em>Reset to Wireless Factory Defaults</em> (manual page 01, first barcode). That returns it to Enter. Don't scan other setup barcodes.</li>
+  </ol>
+</div>
+
+<div class="card" id="g-list">
+  <h2>List something for sale (Listings tab)</h2>
+  <p>One row per machine or item, even when one Facebook post covers 12 machines (give all 12 rows the same price and date). Leave a row on this tab forever: when the thing sells, it turns <strong>Sold</strong> by itself.</p>
+  <h3>Add a listing</h3>
+  <ol class="steps">
+    <li>Click the <strong>Listings</strong> tab, then the first empty cell in column <strong>A</strong>.</li>
+    <li><strong>A Asset ID:</strong> scan the label or pick from the drop-down. For RAM, scan the module's serial. Hardware IDs (like <code>MON-001</code>) are accepted after a warning; click <strong>Yes</strong>.</li>
+    <li><strong>B Listing status:</strong> pick from the drop-down (table below).</li>
+    <li><strong>C Asking price:</strong> the price for <em>this one unit</em>, as a number.</li>
+    <li><strong>D Date listed:</strong> type it as <code>2026-11-09</code> or <code>11/9/2026</code>.</li>
+    <li><strong>E Platform:</strong> pick from the drop-down.</li>
+    <li><strong>F Listing URL</strong> and <strong>G Notes:</strong> optional. A link starting with <code>https://</code> becomes clickable in the dashboard.</li>
+    <li><strong>H Current status</strong> fills in by itself. Don't type in it.</li>
+  </ol>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Status (column B)</th><th>Use it when</th><th>Counts toward the potential?</th></tr></thead>
+    <tbody>
+      <tr><td>Needs listed</td><td>Ready to sell, but not posted yet.</td><td>No</td></tr>
+      <tr><td>Listed</td><td>The listing is live.</td><td>Yes, at the asking price</td></tr>
+      <tr><td>Pending</td><td>A buyer is lined up but hasn't paid.</td><td>Yes, at the asking price</td></tr>
+      <tr><td>Removed</td><td>You took the listing down.</td><td>No</td></tr>
+      <tr><td>Not listed</td><td>Same as having no row at all.</td><td>No</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Common changes</h3>
+  <dl class="kv">
+    <dt>Price drop</dt><dd>Type the new price over column C. Only the current price is kept.</dd>
+    <dt>Buyer lined up</dt><dd>Change column B to Pending.</dd>
+    <dt>Sale fell through</dt><dd>Change column B back to Listed.</dd>
+    <dt>It sold</dt><dd>Record the sale on the Sales tab (next section). Leave the Listings row alone: column H changes to Sold and the row turns grey. It then counts once, at its actual sale net, never at its asking price.</dd>
+    <dt>Relisted later</dt><dd>Update B, C and D on the same row. Don't add a second row; a second row for the same ID is ignored and flagged.</dd>
+  </dl>
+  <div class="tip"><strong>Net sales potential</strong> = net of everything sold + asking prices of everything Listed or Pending. <strong>Total profit potential</strong> = net sales potential &minus; the lot price. No fees or shipping are taken off asking prices.</div>
+</div>
+
+<div class="card" id="g-sale">
+  <h2>Record a sale (Sales tab)</h2>
+  <p>Every row is one thing sold. Type only in the blue columns. The grey columns (D, E, Q to X) fill in by themselves.</p>
+  <h3>One machine or item</h3>
+  <ol class="steps">
+    <li>Click the first empty cell in column <strong>A</strong>. <strong>A Sale date:</strong> type <code>2026-11-07</code> or <code>11/7/2026</code>.</li>
+    <li><strong>B Asset ID:</strong> scan the label or pick from the drop-down. For RAM, scan its serial. Other IDs (like <code>MON-001</code>, or a Master-only machine) are accepted after a warning; click <strong>Yes</strong>.</li>
+    <li><strong>C Order ID:</strong> leave blank.</li>
+    <li><strong>F Sale price:</strong> what the buyer paid. <strong>G Fees</strong> and <strong>H Shipping cost:</strong> leave blank if none. Leave <strong>I, J, K</strong> blank.</li>
+    <li><strong>L Platform</strong> and <strong>M Payment method:</strong> from the drop-downs. <strong>N Buyer:</strong> optional. <strong>O Sold with:</strong> what went with it (RAM, drive, OS, power cord). <strong>P Notes.</strong></li>
+    <li>Check: column <strong>X Check</strong> says <code>OK</code>.</li>
+  </ol>
+  <h3>Several things to one buyer (an order)</h3>
+  <ol class="steps">
+    <li>Pick a new order ID, for example <code>ORD-007</code>. Never reuse one.</li>
+    <li>Add one row per machine. Type the same order ID in column <strong>C</strong> on every row.</li>
+    <li>On the order's <strong>first row only</strong>: A Sale date, I Order total (what the buyer paid for all of them), J Order fees, K Order shipping, L Platform, M Payment method, N Buyer. The other rows use the first row's date and platform.</li>
+    <li>Leave <strong>F Sale price</strong> blank on every row to split the total evenly. To set your own split, type a price on some rows; the rest is split evenly over the blank ones.</li>
+    <li>Leave <strong>G</strong> and <strong>H</strong> blank on order rows. Order fees and shipping are split evenly.</li>
+    <li>Check: column <strong>X Check</strong> says <code>OK</code> on every row of the order.</li>
+  </ol>
+  <div class="tip">After saving, the machine shows SOLD on the Computers tab (column Y), its rows on Computers, Items and Listings turn grey, and the dashboard counts it as sold.</div>
+</div>
+
+<div class="card" id="g-checks">
+  <h2>Sale check messages (Sales tab, column X)</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Message</th><th>Means</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td><code>OK</code></td><td>Everything adds up.</td><td>Nothing.</td></tr>
+      <tr><td><code>DUPLICATE</code></td><td>The same asset ID is on two Sales rows.</td><td>Clear the wrong row (select it, <kbd>Delete</kbd>).</td></tr>
+      <tr><td><code>ID NOT FOUND</code></td><td>The ID isn't on Computers, Master or Items.</td><td>Fix the typo, or add the item to Items or Master first.</td></tr>
+      <tr><td><code>ORDER ID MISSING</code></td><td>I, J or K is filled in but C is blank.</td><td>Type the order ID in C, or move the amount to F/G/H.</td></tr>
+      <tr><td><code>ORDER TOTAL TWICE</code></td><td>I, J or K is filled in on more than one row of the order.</td><td>Keep them on the first row only.</td></tr>
+      <tr><td><code>NO PRICE</code></td><td>No sale price, and no order total to split.</td><td>Fill in F, or I on the order's first row.</td></tr>
+      <tr><td><code>NO DATE</code></td><td>No sale date on the row or the order's first row.</td><td>Fill in A.</td></tr>
+      <tr><td><code>FEES TWICE</code></td><td>G or H is filled on an order row, and the order also has J or K.</td><td>Use either per-row fees or order fees, not both.</td></tr>
+      <tr><td><code>PRICE MISMATCH</code></td><td>The order's prices don't add up to its total, or a price is below zero.</td><td>Fix the prices in F, or the total in I.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card" id="g-lot">
+  <h2>Lot price and totals (Selling Dashboard and Summary tabs)</h2>
+  <ol class="steps">
+    <li>Type what you paid for the whole lot once, in the yellow cell <strong>B3</strong> on the <strong>Selling Dashboard</strong> tab.</li>
+    <li>Everything else on Selling Dashboard and Summary is calculated. Don't type in them.</li>
+  </ol>
+  <p>Selling Dashboard shows units sold, gross, fees, shipping, net, averages, lot cost recovered, profit, and breakdowns by type, platform and month. Summary shows counts of computers by type, Windows 11 results, scan status, items, bulk units and Master rows. The dashboard's Data tab checks its own totals against Selling Dashboard.</p>
+</div>
+
+<div class="card" id="g-lists">
+  <h2>Change a drop-down (Lists tab)</h2>
+  <p>Each drop-down reads a fixed range of the Lists tab. For example, Sales &gt; Platform reads <code>Lists!F2:F7</code>.</p>
+  <dl class="kv">
+    <dt>Rename a value</dt><dd>Type over it on the Lists tab. Rows that already use the old wording keep it; change those by hand.</dd>
+    <dt>Add a value</dt><dd>A value typed below the end of the range won't appear in the drop-down. Either type over an unused value inside the range (like <code>Other</code>), or widen the range: select the column on the tab that uses it, then <strong>Data</strong> tab &gt; <strong>Data Validation</strong> &gt; change <strong>Source</strong> &gt; <strong>OK</strong>.</dd>
+    <dt>After widening a range</dt><dd>The dashboard's Workbook health will report the drop-down "has changed". That's expected: ask Claude to update the reference copy.</dd>
+  </dl>
+</div>
+
+<div class="card" id="g-dont">
+  <h2>Things that break the workbook</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Don't</th><th>Because</th><th>Instead</th></tr></thead>
+    <tbody>
+      <tr><td>Type in a formula column (Computers U&ndash;Y, Sales D, E, Q&ndash;X, Listings H)</td><td>It replaces the formula with fixed text.</td><td>Leave them alone. If it happened, copy the formula down from the row above (select the cell above, <kbd>Ctrl</kbd>+<kbd>C</kbd>, select the broken cell, <kbd>Ctrl</kbd>+<kbd>V</kbd>).</td></tr>
+      <tr><td>Paste over Computers U to Y</td><td>Same as above, for many rows at once.</td><td>Paste only into A to T.</td></tr>
+      <tr><td>Right-click &gt; Delete a row, or Insert a row/column</td><td>It shifts the formula ranges (rows 2 to 500) and the columns the dashboard reads.</td><td>Select the cells and press <kbd>Delete</kbd> to clear them.</td></tr>
+      <tr><td>Sort the Sales tab</td><td>Orders take their date and platform from the order's first row.</td><td>Leave Sales in the order you typed it.</td></tr>
+      <tr><td>Normal paste (<kbd>Ctrl</kbd>+<kbd>V</kbd>) from another file</td><td>Copies the other file's formatting over the sold-row shading.</td><td>Paste values: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>, <kbd>V</kbd>, <kbd>Enter</kbd>.</td></tr>
+      <tr><td>Rename or move the file, or rename a tab or a header</td><td>The dashboard finds the file by name and the columns by header.</td><td>Keep <code>Hardware Inventory.xlsx</code> in the Inventory folder, with the same tab and header names.</td></tr>
+      <tr><td>Save it with something other than Excel</td><td>Other tools can drop the drop-downs or saved formula results.</td><td>Open and save it in Excel.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card" id="g-save">
+  <h2>Saving</h2>
+  <ol class="steps">
+    <li>Save in Excel (<kbd>Ctrl</kbd>+<kbd>S</kbd>) and close it.</li>
+    <li>Nextcloud syncs the file to the server. Give it a few seconds.</li>
+    <li>The dashboard checks every minute and reloads by itself. Click <strong>Refresh</strong> (top right) to load it right away. The time next to "Workbook saved" at the top shows which save you're looking at.</li>
+  </ol>
+  <div class="tip">Before a big change, make a copy of the file in the same folder, for example <code>Hardware Inventory (backup 2026-11-10).xlsx</code>.</div>
+</div>
+
+<div class="card" id="g-dash">
+  <h2>Using this dashboard</h2>
+  <p>It only reads the workbook. Nothing you do here changes the file.</p>
+  <dl class="kv">
+    <dt>Overview</dt><dd>Net sales, lot cost recovered, profit, net sales potential, total profit potential, cumulative net vs lot cost, and Needs attention.</dd>
+    <dt>Sales</dt><dd>Every sale. Search, filter by platform or type, and click a column header to sort. Orders are banded together.</dd>
+    <dt>Listings</dt><dd>Every machine and hardware item with its listing status and asking price, plus the potential figures.</dd>
+    <dt>Computer Inventory</dt><dd>Every machine. Click a row for its scan fields, Master notes, sale, listing and full scan file.</dd>
+    <dt>Computer Fleet</dt><dd>Charts of unsold (or all) machines by model, CPU, RAM, Windows 11, TPM and drive, and groups of identical machines.</dd>
+    <dt>Hardware Inventory</dt><dd>Every Items-tab entry. Click a row for its details, sale and listing. The Bulk tab is at the bottom.</dd>
+    <dt>Hardware Fleet</dt><dd>Charts of items by type, make, condition, RAM size, generation, form factor and ECC, bulk quantities, and groups of identical parts.</dd>
+    <dt>Notes</dt><dd>The Master tab and Needs attention.</dd>
+    <dt>Data</dt><dd>Workbook health, file details, warnings, a cross-check against Selling Dashboard, and the Summary and Lists tabs.</dd>
+  </dl>
+  <h3>Needs attention: what each line means</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Line</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Sale check</td><td>Fix the Sales row (see <a href="" data-jump="g-checks">Sale check messages</a>).</td></tr>
+      <tr><td>Status CHECK / Master status &hellip;</td><td>The machine has a problem or a TODO. Handle it, then set its status to OK on the Master tab.</td></tr>
+      <tr><td>Not scanned</td><td>On the Master tab but never scanned. Scan it, or leave it if it can't be.</td></tr>
+      <tr><td>Note mentions the scan row</td><td>A Master note refers to the scan. Check it still applies after a re-scan, and update the note.</td></tr>
+      <tr><td>Formula missing in Excel</td><td>Copy the formula down from a row above on the tab named.</td></tr>
+      <tr><td>Saved values out of date</td><td>Open the workbook in Excel, save, close.</td></tr>
+      <tr><td>Totals mismatch</td><td>Open the workbook in Excel, save, close. If it stays, check Workbook health.</td></tr>
+      <tr><td>Listing on two rows</td><td>Clear the extra Listings row for that ID.</td></tr>
+      <tr><td>Listing ID not found</td><td>Fix the typo in Listings column A.</td></tr>
+      <tr><td>No asking price</td><td>Type a price in Listings column C, or change the status.</td></tr>
+      <tr><td>Unknown listing status</td><td>Pick a status from the drop-down in Listings column B.</td></tr>
+      <tr><td>Workbook health</td><td>See the Data tab and the next section.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card" id="g-health">
+  <h2>Fixing Workbook health problems (Data tab)</h2>
+  <p>Workbook health compares the file with a reference copy of its formulas, drop-downs and shading rules. Each problem line names the tab, the column and the rows.</p>
+  <dl class="kv">
+    <dt>No formula in row(s) &hellip;</dt><dd>Select a cell in that column that still has the formula, <kbd>Ctrl</kbd>+<kbd>C</kbd>, select the broken rows in the same column, <kbd>Ctrl</kbd>+<kbd>V</kbd>. Save.</dd>
+    <dt>Formula differs from the rest of the column</dt><dd>Same fix. If you changed it on purpose, ask Claude to update the reference copy.</dd>
+    <dt>No formula in B4 (Summary or Selling Dashboard)</dt><dd>Something was typed over a calculated cell. Copy that cell from the backup file, or undo (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) if Excel is still open.</dd>
+    <dt>Drop-down &hellip; is missing</dt><dd>Usually the file was saved by something other than Excel, or cells were pasted over. Restore from the backup, or ask Claude to put the drop-down back.</dd>
+    <dt>Shading rule now covers &hellip;</dt><dd>A normal paste cut the grey sold-row rule. Home &gt; Conditional Formatting &gt; Manage Rules &gt; Show formatting rules for: This Worksheet &gt; edit <strong>Applies to</strong> back to the range shown (for example <code>=$A$2:$Y$500</code>).</dd>
+    <dt>Column header is &hellip;</dt><dd>A column was renamed, moved or deleted. Undo it, or restore from the backup.</dd>
+  </dl>
+</div>
+
+<div class="card" id="g-update">
+  <h2>Updating the dashboard (on capacitor)</h2>
+  <ol class="steps">
+    <li>In the UnRAID web UI, click the <strong>Terminal</strong> icon (<code>&gt;_</code>, top right).</li>
+    <li>Run:
+      <pre>cd /mnt/user/appdata/inventory-dashboard
+git pull
+bash deploy.sh</pre></li>
+    <li>Wait for <code>== Done.</code>, then reload this page.</li>
+  </ol>
+</div>
+
+</div>

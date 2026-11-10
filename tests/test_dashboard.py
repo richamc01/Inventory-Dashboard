@@ -429,3 +429,45 @@ def test_bundled_baseline_is_formula_only():
                          "defined_names"}
     for cells in base["fixed"].values():
         assert all(v.startswith("=") for v in cells.values())
+
+
+# ---- Type codes and instructions ----------------------------------------------
+
+def test_type_codes_from_lists(tmp_path):
+    import openpyxl
+    path = build(str(tmp_path))
+    wb = openpyxl.load_workbook(path)
+    ls = wb["Lists"]
+    ls["J1"], ls["K1"], ls["L1"] = "Type code", "Meaning", "Used for"
+    ls["J2"], ls["K2"], ls["L2"] = "DT", "Desktops", "Computers"
+    ls["J3"], ls["K3"], ls["L3"] = "RAM", "Memory modules", "Hardware"
+    wb.save(path)
+    s = build_snapshot(path, None, baseline=None)
+    assert s["type_codes"] == [{"code": "DT", "meaning": "Desktops", "used_for": "Computers"},
+                               {"code": "RAM", "meaning": "Memory modules", "used_for": "Hardware"}]
+    # The type-code columns are not shown as drop-down lists.
+    assert "Type code" not in s["lists"] and "Meaning" not in s["lists"]
+    assert s["lists"]["Type"] == ["MON"]
+
+
+def test_no_type_codes(snap):
+    assert snap["type_codes"] == []
+
+
+def test_hardware_ram_parts(snap):
+    ram = {h["id"]: h["ram"] for h in snap["hardware"] if h["ram"]}
+    assert ram["SER-RAM-1"] == {"form": "DIMM", "size_gb": 4, "gen": "DDR3L", "ecc": False}
+    assert ram["SER-RAM-2"] == {"form": "DIMM", "size_gb": 16, "gen": "DDR3L", "ecc": True}
+
+
+def test_instructions_page(fx):
+    import re
+    app = create_app(*fx)
+    r = app.test_client().get("/static/instructions.html")
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert "<!--TYPE_CODES-->" in html
+    ids = set(re.findall(r'id="([^"]+)"', html))
+    jumps = set(re.findall(r'data-jump="([^"]+)"', html))
+    assert jumps and jumps <= ids, jumps - ids
+    assert html.count("<div") == html.count("</div>")

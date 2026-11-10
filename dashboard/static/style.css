@@ -215,3 +215,21 @@ details.scan pre { margin: 0; padding: 8px 10px; border-top: 1px solid var(--gri
   .attn li { grid-template-columns: max-content 1fr; }
   .attn li .text { grid-column: 1 / -1; }
 }
+
+/* Type codes: meaning on hover */
+.code { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; cursor: help; }
+.legend { grid-template-columns: max-content 1fr; }
+
+/* Instructions page */
+.guide { max-width: 1000px; }
+.guide h3 { margin: 18px 0 8px; font-size: 14px; }
+.guide p { line-height: 1.55; margin: 8px 0; }
+.guide .toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; align-items: baseline; }
+.guide ol.steps, .guide ul.rules { padding-left: 22px; margin: 8px 0; line-height: 1.6; }
+.guide ol.steps > li, .guide ul.rules > li { margin: 4px 0; padding-left: 4px; }
+.guide .tip { border-left: 3px solid var(--series-1); background: var(--surface-2); padding: 10px 12px; border-radius: 0 6px 6px 0; margin: 12px 0; line-height: 1.55; }
+.guide kbd { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface-2); white-space: nowrap; }
+.guide code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+.guide pre { background: var(--surface-2); padding: 10px 12px; border-radius: 6px; overflow-x: auto; }
+.guide dl.kv { gap: 6px 16px; line-height: 1.5; }
+.guide .card { scroll-margin-top: 70px; }

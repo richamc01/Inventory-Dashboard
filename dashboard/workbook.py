@@ -149,16 +149,25 @@ RAM_GEN_PATTERNS = [
 ]
 
 
+def ram_parts(spec):
+    """Form factor, size, generation and ECC read from a RAM Key spec."""
+    spec = spec or ""
+    form = "SODIMM" if re.search(r"SODIMM", spec, re.I) else (
+        "DIMM" if re.search(r"DIMM", spec, re.I) else None)
+    size = re.search(r"(\d+)\s*GB", spec, re.I)
+    gen = next((g for p, g in RAM_GEN_PATTERNS if p.search(spec)), None)
+    ecc = bool(re.search(r"\bECC\b|PC3L?-\d+R\b|PC4-\d+R\b", spec, re.I))
+    return {"form": form, "size_gb": int(size.group(1)) if size else None, "gen": gen, "ecc": ecc}
+
+
 def ram_group(spec):
     """'DIMM 8GB PC3L-12800U 2Rx8' -> 'DIMM 8GB DDR3L'; ECC flagged."""
     if not spec:
         return "Unknown"
-    form = "SODIMM" if re.search(r"SODIMM", spec, re.I) else (
-        "DIMM" if re.search(r"DIMM", spec, re.I) else "")
-    size = re.search(r"(\d+)\s*GB", spec, re.I)
-    gen = next((g for p, g in RAM_GEN_PATTERNS if p.search(spec)), "")
-    ecc = " ECC" if re.search(r"\bECC\b|PC3L?-\d+R\b|PC4-\d+R\b", spec, re.I) else ""
-    parts = [form, f"{size.group(1)}GB" if size else "", gen + ecc]
+    p = ram_parts(spec)
+    form, gen = p["form"] or "", p["gen"] or ""
+    ecc = " ECC" if p["ecc"] else ""
+    parts = [form, f"{p['size_gb']}GB" if p["size_gb"] is not None else "", gen + ecc]
     label = " ".join(p for p in parts if p).strip()
     return label or spec
 
@@ -500,6 +509,8 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
     return units, summary, attention
 
 
+TYPE_CODE_HEADERS = ("Type code", "Meaning", "Used for")
+
 COMPUTER_FORMULA_COLS = ["win11_override", "manual_notes", "win11_effective", "ram_mb_effective", "sold"]
 SALES_FORMULA_COLS = ["Type", "Model", "Price used", "Fees used", "Shipping used", "Net",
                       "Date used", "Platform used", "Machines in order", "Check"]
@@ -568,13 +579,23 @@ def _build(wb, wbf, path, raw_dir):
 
     ws = _sheet(wb, "Lists", warn)
     lists = OrderedDict()
+    type_codes = []
     if ws:
         rows = read_all_rows(ws)
         if rows:
             header = rows[0]
+            tc = {h: header.index(h) for h in TYPE_CODE_HEADERS if h in header}
             for i, h in enumerate(header):
-                if h:
+                if h and h not in TYPE_CODE_HEADERS:
                     lists[h] = [r[i] for r in rows[1:] if i < len(r) and r[i] is not None]
+            if "Type code" in tc:
+                for r in rows[1:]:
+                    def at(h):
+                        i = tc.get(h)
+                        return r[i] if i is not None and i < len(r) else None
+                    if at("Type code") is not None:
+                        type_codes.append({"code": str(at("Type code")), "meaning": at("Meaning"),
+                                           "used_for": at("Used for")})
 
     # Listings is optional: without it the dashboard works as before.
     listing_rows, listing_cols = [], []
@@ -773,6 +794,7 @@ def _build(wb, wbf, path, raw_dir):
             "type": it.get("Type"), "make": it.get("Make"), "model": it.get("Model"),
             "key_spec": it.get("Key spec"), "condition": it.get("Condition"), "notes": it.get("Notes"),
             "ram_group": ram_group(it.get("Key spec")) if (it.get("Type") or "").upper() == "RAM" else None,
+            "ram": ram_parts(it.get("Key spec")) if (it.get("Type") or "").upper() == "RAM" else None,
             "row": it.get("_row"), "is_sold": sale is not None, "sale": sale,
             "listing": it.get("_listing"),
             "extra": {k: v for k, v in it.items() if not k.startswith("_") and k not in
@@ -944,6 +966,7 @@ def _build(wb, wbf, path, raw_dir):
         "bulk_cols": bulk_cols,
         "summary_rows": summary_rows,
         "lists": lists,
+        "type_codes": type_codes,
         "attention": attention,
         "listings": listings,
         "listing_units": listing_units,

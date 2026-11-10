@@ -12,6 +12,7 @@ const state = {
   sales: { q: "", platform: "", type: "", sort: "date", dir: -1 },
   listings: { q: "", status: "", kind: "", sort: "status", dir: 1 },
   fleetScope: "unsold",
+  hwFleetScope: "unsold",
   hw: { q: "", type: "", condition: "", listing: "", sold: "unsold", sort: "id", dir: 1 },
 };
 
@@ -91,6 +92,37 @@ function assetLink(id) {
 
 function statusBadge(level, text) {
   return `<span class="badge lv-${level}"><span class="status-dot"></span>${esc(text)}</span>`;
+}
+
+function typeMeaning(code) {
+  const d = state.data;
+  if (!d || !code) return null;
+  const t = (d.type_codes || []).find(x => x.code.toUpperCase() === String(code).toUpperCase());
+  return t ? t.meaning : null;
+}
+
+// A type code with its meaning on hover.
+function typeCell(code) {
+  if (code === null || code === undefined || code === "") return "";
+  const m = typeMeaning(code);
+  return m ? `<span class="code" title="${esc(m)}">${esc(code)}</span>` : esc(code);
+}
+
+// Legend card for the codes used on a page.
+function typeLegend(d, usedFor) {
+  const codes = (d.type_codes || []).filter(t => usedFor.includes(t.used_for));
+  if (!(d.type_codes || []).length) {
+    return `<div class="card"><h2>Type codes</h2><div class="empty">No Type codes table found on the Lists tab (columns Type code, Meaning, Used for).</div></div>`;
+  }
+  return `<div class="card"><div class="card-head"><h2>Type codes</h2><span class="muted small">from the Lists tab · hover any code on the dashboard to see its meaning</span></div>
+    <dl class="kv legend">${codes.map(t => `<dt><strong>${esc(t.code)}</strong></dt><dd>${esc(t.meaning)}</dd>`).join("")}</dl></div>`;
+}
+
+function withMeaning(rows) {
+  return rows.map(r => {
+    const m = typeMeaning(r.label);
+    return m ? { ...r, tip: `${r.label}: ${m}\n${r.value} unit${r.value === 1 ? "" : "s"}` } : r;
+  });
 }
 
 function ramLabel(gb) {
@@ -224,7 +256,7 @@ function viewOverview(d) {
   </div>`;
 
   const typeRows = d.by_type.map(t => `<tr>
-      <td>${esc(t.type)}</td>
+      <td>${typeCell(t.type)}</td>
       <td class="num">${t.total ?? "–"}</td><td class="num">${t.sold}</td><td class="num">${t.unsold ?? "–"}</td>
       <td class="num">${money(t.net)}</td><td class="num">${money(t.avg_net, { blank: "–" })}</td></tr>`).join("");
   const byType = `<div class="card"><div class="card-head"><h2>By machine type</h2></div>
@@ -296,7 +328,7 @@ function viewListings(d) {
     const idCell = u.id ? assetLink(u.id) : '<span class="dim">no ID</span>';
     const inPot = u.status === "Sold" ? `<span class="dim">at sale net</span>` : u.counts ? "Yes" : "";
     return `<tr>
-      <td class="nowrap">${idCell}</td><td>${esc(u.kind)}</td><td>${esc(u.type)}</td><td class="nowrap">${esc(u.model)}</td>
+      <td class="nowrap">${idCell}</td><td>${esc(u.kind)}</td><td>${typeCell(u.type)}</td><td class="nowrap">${esc(u.model)}</td>
       <td class="nowrap small">${esc(u.detail)}</td><td class="nowrap">${listingBadge(u.status)}</td>
       <td class="num">${money(u.asking)}</td><td class="num">${money(u.sale_net)}</td>
       <td class="nowrap">${fmtDate(u.date_listed)}</td><td class="nowrap">${esc(u.platform)}${u.url ? ` <a href="${esc(u.url)}" target="_blank" rel="noopener noreferrer">link</a>` : ""}</td>
@@ -381,7 +413,7 @@ function viewSales(d) {
     const check = s.check === "OK" ? statusBadge("good", "OK") : statusBadge("serious", s.check);
     return `<tr class="${band ? "" : "band"}">
       <td class="nowrap">${fmtDate(s.date)}</td><td class="nowrap">${esc(s.order_id)}${s.machines_in_order > 1 ? ` <span class="dim small">(${s.machines_in_order})</span>` : ""}</td>
-      <td class="nowrap">${assetLink(s.asset_id)}</td><td>${esc(s.type)}</td><td class="nowrap">${esc(s.model)}</td>
+      <td class="nowrap">${assetLink(s.asset_id)}</td><td>${typeCell(s.type)}</td><td class="nowrap">${esc(s.model)}</td>
       <td class="num">${money(s.price)}</td><td class="num">${money(s.fees)}</td><td class="num">${money(s.shipping)}</td>
       <td class="num">${money(s.net)}</td><td class="nowrap">${esc(s.platform)}</td><td>${esc(s.payment)}</td>
       <td>${esc(s.buyer)}</td><td class="wrap">${esc(s.sold_with)}</td><td class="wrap">${esc(s.notes)}</td><td>${check}</td></tr>`;
@@ -434,7 +466,7 @@ function viewInventory(d) {
     const tpm = c.tpm_visible === null || c.tpm_visible === undefined ? "" : c.tpm_visible ? "Yes" : "No";
     return `<tr class="click" data-asset="${esc(c.asset_id)}">
       <td class="nowrap"><a href="#inventory/${encodeURIComponent(c.asset_id)}" data-asset="${esc(c.asset_id)}">${esc(c.asset_id)}</a></td>
-      <td>${esc(c.type)}</td><td class="nowrap">${esc(c.model)}</td><td class="nowrap">${esc(c.cpu_short)}</td>
+      <td>${typeCell(c.type)}</td><td class="nowrap">${esc(c.model)}</td><td class="nowrap">${esc(c.cpu_short)}</td>
       <td class="num">${esc(c.cpu_gen)}</td><td class="num">${esc(ramLabel(c.ram_gb))}</td>
       <td class="nowrap">${c.has_drive ? esc(c.drives) : c.source === "master-only" ? "" : '<span class="dim">none</span>'}</td>
       <td class="nowrap">${esc(c.win11_eff)}</td><td>${tpm}</td><td>${st}</td>
@@ -476,11 +508,11 @@ function viewFleet(d) {
     ["Windows 11 (effective)", sortDesc(countBy(list, c => c.win11_eff))],
     ["TPM visible to the scan", sortDesc(countBy(scanned, c => (c.tpm_visible ? "Yes" : "No")))],
     ["Drive installed", sortDesc(countBy(scanned, c => (c.has_drive ? "Yes" : "No")))],
-    ["Type", sortDesc(countBy(list, c => c.type))],
+    ["Type", withMeaning(sortDesc(countBy(list, c => c.type)))],
     ["Scan status", sortDesc(countBy(list, c => c.status))],
   ];
   const chartCards = charts.map(([title, rows]) =>
-    `<div class="card"><h2>${esc(title)}</h2>${hbars(rows.map(r => ({ ...r, tip: `${title}: ${r.label}\n${r.value} machine${r.value === 1 ? "" : "s"}` })), v => v)}</div>`).join("");
+    `<div class="card"><h2>${esc(title)}</h2>${hbars(rows.map(r => ({ ...r, tip: r.tip || `${title}: ${r.label}\n${r.value} machine${r.value === 1 ? "" : "s"}` })), v => v)}</div>`).join("");
 
   // Groups of identical machines - handy for writing one listing per group.
   const groups = new Map();
@@ -506,6 +538,7 @@ function viewFleet(d) {
       </div>
       <span class="count">${list.length} machines${list.length !== scanned.length ? ` (${scanned.length} scanned)` : ""}</span>
     </div>
+    ${typeLegend(d, ["Computers"])}
     <div class="grid cols-3">${chartCards}</div>
     ${gtable}`;
 }
@@ -541,15 +574,12 @@ function viewHardware(d) {
       : '<span class="dim">no ID</span>';
     const l = h.listing && !h.is_sold ? h.listing : null;
     return `<tr${clickable ? ` class="click" data-asset="${esc(h.id)}"` : ""}>
-      <td class="nowrap">${idCell}</td><td>${esc(h.type)}</td><td class="nowrap">${esc(h.make)}</td>
+      <td class="nowrap">${idCell}</td><td>${typeCell(h.type)}</td><td class="nowrap">${esc(h.make)}</td>
       <td class="nowrap">${esc(h.model)}</td><td class="nowrap small">${esc(h.key_spec)}</td><td>${esc(h.condition)}</td>
       <td class="nowrap">${l ? listingBadge(l.status) : ""}</td><td class="num">${l ? money(l.asking) : ""}</td>
       <td class="nowrap">${h.is_sold ? `<span class="badge sold">Sold${h.sale && h.sale.net !== null ? " · " + money(h.sale.net) : ""}</span>` : ""}</td>
       <td class="wrap small">${esc(h.notes)}</td></tr>`;
   }).join("");
-  const scope = all.filter(h => f.sold === "" || (f.sold === "sold" ? h.is_sold : !h.is_sold));
-  const ramScope = scope.filter(h => h.ram_group);
-  const scopeLabel = f.sold === "sold" ? "sold" : f.sold === "unsold" ? "unsold" : "all";
   const noId = all.filter(h => !h.id).length;
   const bulk = d.bulk.length ? `<div class="table-wrap"><table><thead><tr>${d.bulk_cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>
     ${d.bulk.map(b => `<tr>${d.bulk_cols.map(c => `<td>${esc(b[c])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`
@@ -570,12 +600,63 @@ function viewHardware(d) {
       : `<div class="empty">No items recorded on the Items tab.</div>`}
     <p class="muted small">From the Items tab. Click a row for its details, listing and sale.${noId ? ` ${noId} item${noId === 1 ? " has" : "s have"} no asset ID or serial, so ${noId === 1 ? "it" : "they"} can't be matched to a sale or listing.` : ""}</p>
   </div>
-  <div class="grid cols-2">
-    <div class="card"><div class="card-head"><h2>Items by type</h2><span class="muted small">${scopeLabel}</span></div>${hbars(countBy(scope, h => h.type).sort((a, b) => b.value - a.value), v => v)}</div>
-    <div class="card"><div class="card-head"><h2>RAM modules by kind</h2><span class="muted small">${scopeLabel}</span></div>${hbars(countBy(ramScope, h => h.ram_group).sort((a, b) => b.value - a.value), v => v)}
-      <p class="muted small">Grouped from the Key spec column.</p></div>
-  </div>
   <div class="card"><h2>Bulk tab</h2>${bulk}</div>`;
+}
+
+function viewHwFleet(d) {
+  const scope = state.hwFleetScope;
+  const list = d.hardware.filter(h => scope === "all" || !h.is_sold);
+  const ram = list.filter(h => h.ram);
+  const sortDesc = rows => rows.sort((a, b) => b.value - a.value || cmp(a.label, b.label));
+  const unit = n => `${n} item${n === 1 ? "" : "s"}`;
+  const charts = [
+    ["Type", withMeaning(sortDesc(countBy(list, h => h.type)))],
+    ["Make", sortDesc(countBy(list, h => h.make))],
+    ["Condition", sortDesc(countBy(list, h => h.condition))],
+    ["RAM by kind", sortDesc(countBy(ram, h => h.ram_group))],
+    ["RAM by size", countBy(ram, h => h.ram.size_gb).sort((a, b) => (parseFloat(a.label) || 0) - (parseFloat(b.label) || 0))
+      .map(r => ({ ...r, label: r.label === "(not recorded)" ? r.label : r.label + " GB" }))],
+    ["RAM by generation", sortDesc(countBy(ram, h => h.ram.gen))],
+    ["RAM by form factor", sortDesc(countBy(ram, h => h.ram.form))],
+    ["RAM: ECC or not", sortDesc(countBy(ram, h => (h.ram.ecc ? "ECC (server)" : "Non-ECC")))],
+  ];
+  const bulkByType = new Map();
+  for (const b of d.bulk) {
+    const k = b["Item type"] || "(not recorded)";
+    bulkByType.set(k, (bulkByType.get(k) || 0) + (Number(b["Quantity"]) || 0));
+  }
+  const bulkRows = [...bulkByType.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  const cards = charts.map(([title, rows]) =>
+    `<div class="card"><h2>${esc(title)}</h2>${hbars(rows.map(r => ({ ...r, tip: r.tip || `${title}: ${r.label}\n${unit(r.value)}` })), v => v)}</div>`).join("") +
+    `<div class="card"><h2>Bulk quantity by item type</h2>${d.bulk.length ? hbars(bulkRows.map(r => ({ ...r, tip: `${r.label}\n${r.value} in bins` })), v => v)
+      : `<div class="empty">No bins recorded on the Bulk tab yet.</div>`}<p class="muted small">From the Bulk tab (all bins; bins are not marked sold).</p></div>`;
+
+  // Identical parts: same type, make, model and key spec.
+  const groups = new Map();
+  for (const h of list) {
+    const key = [h.type, h.make, h.model, h.key_spec].join("|");
+    if (!groups.has(key)) groups.set(key, { type: h.type, make: h.make, model: h.model, spec: h.key_spec, items: [] });
+    groups.get(key).items.push(h);
+  }
+  const grows = [...groups.values()].sort((a, b) => b.items.length - a.items.length || cmp(a.model, b.model));
+  const gtable = `<div class="card"><div class="card-head"><h2>Identical-part groups</h2><span class="muted small">type + make + model + key spec</span></div>
+    <div class="table-wrap"><table><thead><tr><th class="num">Count</th><th>Type</th><th>Make</th><th>Model</th><th>Key spec</th><th>IDs</th></tr></thead><tbody>
+    ${grows.map(g => `<tr><td class="num">${g.items.length}</td><td>${typeCell(g.type)}</td><td class="nowrap">${esc(g.make)}</td><td class="nowrap">${esc(g.model)}</td>
+      <td class="nowrap small">${esc(g.spec)}</td>
+      <td class="small">${g.items.map(h => h.id ? (h.id_unique ? assetLink(h.id) : esc(h.id)) : '<span class="dim">no ID</span>').join(", ")}</td></tr>`).join("")
+      || `<tr><td colspan="6" class="empty">No items.</td></tr>`}
+    </tbody></table></div></div>`;
+
+  return `<div class="filters">
+      <div class="seg" id="hf-scope">
+        <button type="button" data-v="unsold" class="${scope === "unsold" ? "on" : ""}">Unsold items</button>
+        <button type="button" data-v="all" class="${scope === "all" ? "on" : ""}">All items</button>
+      </div>
+      <span class="count">${list.length} items (${ram.length} RAM)</span>
+    </div>
+    ${typeLegend(d, ["Hardware", "Bulk"])}
+    <div class="grid cols-3">${cards}</div>
+    ${gtable}`;
 }
 
 function viewNotes(d) {
@@ -638,6 +719,33 @@ function healthCard(h) {
     <p class="muted small">Compared with a reference copy of the workbook's formulas, drop-downs and shading rules (formula text only, no data). Fill-down columns must hold the same formula in every row from 2 to 500.</p></div>`;
 }
 
+/* ---------------- instructions ---------------- */
+
+let guideHtml = null, guideError = null, guideLoading = false;
+
+function typeCodesTable(d) {
+  const tc = d.type_codes || [];
+  if (!tc.length) return `<div class="empty">No Type codes table found on the Lists tab (columns Type code, Meaning, Used for).</div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Code</th><th>Meaning</th><th>Used for</th></tr></thead><tbody>
+    ${tc.map(t => `<tr><td><strong>${esc(t.code)}</strong></td><td>${esc(t.meaning)}</td><td>${esc(t.used_for)}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function viewInstructions(d) {
+  if (guideHtml === null) {
+    if (!guideLoading && !guideError) {
+      guideLoading = true;
+      fetch("/static/instructions.html", { cache: "no-store" })
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
+        .then(t => { guideHtml = t; })
+        .catch(e => { guideError = e.message; })
+        .finally(() => { guideLoading = false; if (state.tab === "instructions") render(); });
+    }
+    return guideError ? `<div class="card">${statusBadge("serious", "Error")} Could not load the instructions: ${esc(guideError)}</div>`
+      : `<p class="muted pad">Loading…</p>`;
+  }
+  return guideHtml.replace("<!--TYPE_CODES-->", typeCodesTable(d));
+}
+
 /* ---------------- drawer ---------------- */
 
 const SCAN_FIELDS = [
@@ -654,14 +762,14 @@ function openHardwareDrawer(h) {
   $("#drawer-title").innerHTML = `<h2>${esc(h.id)} · ${esc([h.make, h.model].filter(Boolean).join(" ") || "Unknown model")}</h2>
     <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${h.is_sold ? `<span class="badge sold">Sold</span>` : `<span class="badge">In stock</span>`}
-      ${h.type ? `<span class="badge">${esc(h.type)}</span>` : ""}
+      ${h.type ? `<span class="badge" title="${esc(typeMeaning(h.type) || "")}">${esc(h.type)}</span>` : ""}
       ${h.condition ? `<span class="badge">${esc(h.condition)}</span>` : ""}
     </div>`;
   const kv = pairs => `<dl class="kv">${pairs.filter(([, v]) => v !== null && v !== undefined && v !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`;
   let html = "";
   if (h.notes) html += `<div class="note">${esc(h.notes)}</div>`;
   html += `<h3>Items tab (row ${esc(h.row)})</h3>` + kv([
-    ["Asset ID", esc(h.asset_id)], ["Serial", esc(h.serial)], ["Type", esc(h.type)], ["Make", esc(h.make)],
+    ["Asset ID", esc(h.asset_id)], ["Serial", esc(h.serial)], ["Type", typeCell(h.type) + (typeMeaning(h.type) ? ` <span class="dim small">${esc(typeMeaning(h.type))}</span>` : "")], ["Make", esc(h.make)],
     ["Model", esc(h.model)], ["Key spec", esc(h.key_spec)], ["RAM kind", esc(h.ram_group)], ["Condition", esc(h.condition)],
     ...Object.entries(h.extra || {}).map(([k, v]) => [k, esc(v)]),
   ]);
@@ -706,7 +814,7 @@ function openDrawer(id) {
     <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${c.is_sold ? `<span class="badge sold">Sold</span>` : `<span class="badge">In stock</span>`}
       ${c.status === "OK" ? statusBadge("good", "Status OK") : statusBadge(c.source === "master-only" ? "info" : "warning", c.status || "No status")}
-      ${c.type ? `<span class="badge">${esc(c.type)}</span>` : ""}
+      ${c.type ? `<span class="badge" title="${esc(typeMeaning(c.type) || "")}">${esc(c.type)}</span>` : ""}
       ${c.source === "master-only" ? `<span class="badge">Master tab only, not scanned</span>` : ""}
     </div>`;
 
@@ -783,7 +891,7 @@ function closeDrawer() {
 
 /* ---------------- render & routing ---------------- */
 
-const VIEWS = { overview: viewOverview, sales: viewSales, listings: viewListings, inventory: viewInventory, fleet: viewFleet, hardware: viewHardware, notes: viewNotes, data: viewData };
+const VIEWS = { overview: viewOverview, sales: viewSales, listings: viewListings, inventory: viewInventory, fleet: viewFleet, hardware: viewHardware, hwfleet: viewHwFleet, notes: viewNotes, data: viewData, instructions: viewInstructions };
 
 function render() {
   for (const a of document.querySelectorAll("#tabs a")) a.classList.toggle("active", a.dataset.tab === state.tab);
@@ -853,6 +961,7 @@ document.addEventListener("click", e => {
     if (group === "i-sold") state.inv.sold = seg.dataset.v;
     if (group === "f-scope") state.fleetScope = seg.dataset.v;
     if (group === "h-sold") state.hw.sold = seg.dataset.v;
+    if (group === "hf-scope") state.hwFleetScope = seg.dataset.v;
     render();
     return;
   }
@@ -884,6 +993,12 @@ document.addEventListener("click", e => {
   if (row) { location.hash = `#${state.tab}/${encodeURIComponent(row.dataset.asset)}`; return; }
   if (t.id === "drawer-close" || t.id === "scrim") { location.hash = `#${state.tab}`; return; }
   if (t.id === "refresh") load(true);
+  const jump = t.closest("a[data-jump]");
+  if (jump) {
+    e.preventDefault();
+    const el = document.getElementById(jump.dataset.jump);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 });
 
 document.addEventListener("keydown", e => {
