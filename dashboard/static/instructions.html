@@ -43,7 +43,7 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Tab</th><th>What it holds</th><th>Do you type in it?</th></tr></thead>
     <tbody>
-      <tr><td><strong>README</strong></td><td>The original written instructions. This page replaces it for day-to-day use.</td><td>No</td></tr>
+      <tr><td><strong>README</strong></td><td>Where to find these instructions, and the four rules that keep the workbook from breaking.</td><td>No</td></tr>
       <tr><td><strong>Summary</strong></td><td>Counts: computers by type, Windows 11 results, scan status, items, bulk units, Master rows.</td><td>No, all calculated</td></tr>
       <tr><td><strong>Selling Dashboard</strong></td><td>Sales totals, lot cost recovered, profit, and breakdowns by type, platform and month.</td><td>Only the yellow cell B3 (lot price)</td></tr>
       <tr><td><strong>Items</strong></td><td>Labeled hardware (MON, NW, UPS, PSU, MB, CH, MS) and RAM modules, one row each.</td><td>Yes, columns A to H</td></tr>
@@ -52,16 +52,15 @@
       <tr><td><strong>Master</strong></td><td>Exceptions: machines that never scanned, Windows 11 overrides, and notes.</td><td>Yes, columns A to H</td></tr>
       <tr><td><strong>Sales</strong></td><td>One row per thing sold.</td><td>Blue columns A to C and F to P. Grey D, E and Q to X are formulas.</td></tr>
       <tr><td><strong>Listings</strong></td><td>One row per thing you have listed (or plan to list), with status and asking price.</td><td>Columns A to G. H is a formula.</td></tr>
-      <tr><td><strong>Lists</strong></td><td>The values behind every drop-down, and the Type codes table.</td><td>Rarely. See <a href="" data-jump="g-lists">Change a drop-down</a>.</td></tr>
+      <tr><td><strong>Lists</strong></td><td>The values behind every drop-down (columns A to H), and the type codes and their meanings (columns J to L).</td><td>Rarely. See <a href="" data-jump="g-lists">Change a drop-down</a>.</td></tr>
     </tbody>
   </table></div>
 </div>
 
 <div class="card" id="g-codes">
   <h2>Type codes</h2>
-  <p>Every asset ID starts with a type code, then a dash and three digits, for example <code>DT-007</code>. RAM has no label; its own barcode (serial) is its ID. Anywhere on the dashboard, hover over a type code to see its meaning.</p>
-  <!--TYPE_CODES-->
-  <p class="muted small">This table comes from the Lists tab, columns J to L. Edit it there and the dashboard follows.</p>
+  <p>Every asset ID starts with a type code, then a dash and three digits, for example <code>DT-007</code>. RAM has no label; its own barcode (serial) is its ID.</p>
+  <p>Hover over a type code anywhere on the dashboard (a Type column, a Type chart, a detail panel) to see what it stands for. The codes and their meanings are kept on the workbook's <strong>Lists</strong> tab, columns <strong>J to L</strong> (Type code, Meaning, Used for). To add or reword one, edit it there; the dashboard follows after you save.</p>
 </div>
 
 <div class="card" id="g-scan">
@@ -81,7 +80,7 @@
     <li>Check: the last pasted column is <strong>T</strong> (<code>detail_file</code>), and columns U to Y still show their results.</li>
     <li>Close <code>inventory.csv</code> without saving.</li>
   </ol>
-  <div class="tip"><strong>Why paste values?</strong> The workbook's README tab says <kbd>Ctrl</kbd>+<kbd>V</kbd>. That works for the data, but a normal paste also copies the CSV's plain formatting over the grey "sold" shading on A to T. Paste Values keeps the shading. If you do use <kbd>Ctrl</kbd>+<kbd>V</kbd> by habit, nothing else breaks; the Data tab's Workbook health will tell you the shading rule now covers fewer cells.</div>
+  <div class="tip"><strong>Why paste values?</strong> A normal paste (<kbd>Ctrl</kbd>+<kbd>V</kbd>) also copies the CSV's plain formatting over the grey "sold" shading on A to T. Paste Values keeps the shading. If you do use <kbd>Ctrl</kbd>+<kbd>V</kbd> by habit, nothing else breaks; the Data tab's Workbook health will tell you the shading rule now covers fewer cells.</div>
   <h3>Refresh after more scans</h3>
   <ol class="steps">
     <li>On the Computers tab, click the box left of the formula bar (the Name Box), type <code>A2:T500</code>, press <kbd>Enter</kbd>.</li>

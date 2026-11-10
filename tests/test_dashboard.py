@@ -466,7 +466,7 @@ def test_instructions_page(fx):
     r = app.test_client().get("/static/instructions.html")
     assert r.status_code == 200
     html = r.get_data(as_text=True)
-    assert "<!--TYPE_CODES-->" in html
+    assert "<!--TYPE_CODES-->" not in html
     ids = set(re.findall(r'id="([^"]+)"', html))
     jumps = set(re.findall(r'data-jump="([^"]+)"', html))
     assert jumps and jumps <= ids, jumps - ids

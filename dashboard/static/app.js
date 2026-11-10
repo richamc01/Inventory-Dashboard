@@ -105,24 +105,7 @@ function typeMeaning(code) {
 function typeCell(code) {
   if (code === null || code === undefined || code === "") return "";
   const m = typeMeaning(code);
-  return m ? `<span class="code" title="${esc(m)}">${esc(code)}</span>` : esc(code);
-}
-
-// Legend card for the codes used on a page.
-function typeLegend(d, usedFor) {
-  const codes = (d.type_codes || []).filter(t => usedFor.includes(t.used_for));
-  if (!(d.type_codes || []).length) {
-    return `<div class="card"><h2>Type codes</h2><div class="empty">No Type codes table found on the Lists tab (columns Type code, Meaning, Used for).</div></div>`;
-  }
-  return `<div class="card"><div class="card-head"><h2>Type codes</h2><span class="muted small">from the Lists tab · hover any code on the dashboard to see its meaning</span></div>
-    <dl class="kv legend">${codes.map(t => `<dt><strong>${esc(t.code)}</strong></dt><dd>${esc(t.meaning)}</dd>`).join("")}</dl></div>`;
-}
-
-function withMeaning(rows) {
-  return rows.map(r => {
-    const m = typeMeaning(r.label);
-    return m ? { ...r, tip: `${r.label}: ${m}\n${r.value} unit${r.value === 1 ? "" : "s"}` } : r;
-  });
+  return m ? `<span class="code" data-tip="${esc(code)}: ${esc(m)}">${esc(code)}</span>` : esc(code);
 }
 
 function ramLabel(gb) {
@@ -131,15 +114,15 @@ function ramLabel(gb) {
 
 /* ---------------- charts ---------------- */
 
-// Horizontal bars, one series (one color). rows: [{label, value, tip?}]
-function hbars(rows, fmt = v => v) {
+// Horizontal bars, one series (one color). rows: [{label, value}]
+// typeLabels: the labels are type codes (meaning pops up on hover).
+function hbars(rows, fmt = v => v, opts = {}) {
   if (!rows.length) return `<div class="empty">Nothing to show.</div>`;
   const max = Math.max(...rows.map(r => r.value), 0) || 1;
   return `<div class="bars">` + rows.map(r => {
     const w = Math.max(0, (r.value / max) * 100);
-    const tip = r.tip || `${r.label}: ${fmt(r.value)}`;
-    return `<div class="bl" title="${esc(r.label)}" data-tip="${esc(tip)}">${esc(r.label)}</div>` +
-      `<div class="bt" data-tip="${esc(tip)}"><div class="bf" style="width:${w}%"></div></div>` +
+    return `<div class="bl">${opts.typeLabels ? typeCell(r.label) : esc(r.label)}</div>` +
+      `<div class="bt"><div class="bf" style="width:${w}%"></div></div>` +
       `<div class="bv">${esc(fmt(r.value))}</div>`;
   }).join("") + `</div>`;
 }
@@ -182,15 +165,8 @@ function cumulativeChart(days, lot) {
     `<text class="ref-label" x="${W - R + 6}" y="${ys(lot) + 4}">Lot cost ${esc(money(lot))}</text>` : "";
   const last = pts[n - 1];
   const endLabel = `<text class="end-label" x="${xs(n - 1) + 8}" y="${ys(last.y) - 8}">${esc(money(last.y))}</text>`;
-  const slot = n === 1 ? (W - L - R) : (W - L - R) / (n - 1);
-  const hits = pts.map((p, i) => {
-    const tip = `${fmtDate(p.x)}\nSold that day: ${p.d.count} · net ${money(p.d.net)}\nCumulative net: ${money(p.y)}` +
-      (lot ? `\nLot cost recovered: ${pct(p.y / lot)}` : "");
-    return `<rect x="${xs(i) - slot / 2}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent" data-tip="${esc(tip)}" data-cross="${xs(i)}"/>`;
-  }).join("");
   return `<div class="linechart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative net sales by day">
-    ${grid}${ref}<line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>
-    <path class="series" d="${path}"/>${dots}${endLabel}${xt}${hits}</svg></div>`;
+    ${grid}${ref}<path class="series" d="${path}"/>${dots}${endLabel}${xt}</svg></div>`;
 }
 
 function niceStep(raw) {
@@ -508,11 +484,11 @@ function viewFleet(d) {
     ["Windows 11 (effective)", sortDesc(countBy(list, c => c.win11_eff))],
     ["TPM visible to the scan", sortDesc(countBy(scanned, c => (c.tpm_visible ? "Yes" : "No")))],
     ["Drive installed", sortDesc(countBy(scanned, c => (c.has_drive ? "Yes" : "No")))],
-    ["Type", withMeaning(sortDesc(countBy(list, c => c.type)))],
+    ["Type", sortDesc(countBy(list, c => c.type)), true],
     ["Scan status", sortDesc(countBy(list, c => c.status))],
   ];
-  const chartCards = charts.map(([title, rows]) =>
-    `<div class="card"><h2>${esc(title)}</h2>${hbars(rows.map(r => ({ ...r, tip: r.tip || `${title}: ${r.label}\n${r.value} machine${r.value === 1 ? "" : "s"}` })), v => v)}</div>`).join("");
+  const chartCards = charts.map(([title, rows, typeLabels]) =>
+    `<div class="card"><h2>${esc(title)}</h2>${hbars(rows, v => v, { typeLabels })}</div>`).join("");
 
   // Groups of identical machines - handy for writing one listing per group.
   const groups = new Map();
@@ -538,7 +514,6 @@ function viewFleet(d) {
       </div>
       <span class="count">${list.length} machines${list.length !== scanned.length ? ` (${scanned.length} scanned)` : ""}</span>
     </div>
-    ${typeLegend(d, ["Computers"])}
     <div class="grid cols-3">${chartCards}</div>
     ${gtable}`;
 }
@@ -608,9 +583,8 @@ function viewHwFleet(d) {
   const list = d.hardware.filter(h => scope === "all" || !h.is_sold);
   const ram = list.filter(h => h.ram);
   const sortDesc = rows => rows.sort((a, b) => b.value - a.value || cmp(a.label, b.label));
-  const unit = n => `${n} item${n === 1 ? "" : "s"}`;
   const charts = [
-    ["Type", withMeaning(sortDesc(countBy(list, h => h.type)))],
+    ["Type", sortDesc(countBy(list, h => h.type)), true],
     ["Make", sortDesc(countBy(list, h => h.make))],
     ["Condition", sortDesc(countBy(list, h => h.condition))],
     ["RAM by kind", sortDesc(countBy(ram, h => h.ram_group))],
@@ -626,9 +600,9 @@ function viewHwFleet(d) {
     bulkByType.set(k, (bulkByType.get(k) || 0) + (Number(b["Quantity"]) || 0));
   }
   const bulkRows = [...bulkByType.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
-  const cards = charts.map(([title, rows]) =>
-    `<div class="card"><h2>${esc(title)}</h2>${hbars(rows.map(r => ({ ...r, tip: r.tip || `${title}: ${r.label}\n${unit(r.value)}` })), v => v)}</div>`).join("") +
-    `<div class="card"><h2>Bulk quantity by item type</h2>${d.bulk.length ? hbars(bulkRows.map(r => ({ ...r, tip: `${r.label}\n${r.value} in bins` })), v => v)
+  const cards = charts.map(([title, rows, typeLabels]) =>
+    `<div class="card"><h2>${esc(title)}</h2>${hbars(rows, v => v, { typeLabels })}</div>`).join("") +
+    `<div class="card"><h2>Bulk quantity by item type</h2>${d.bulk.length ? hbars(bulkRows, v => v)
       : `<div class="empty">No bins recorded on the Bulk tab yet.</div>`}<p class="muted small">From the Bulk tab (all bins; bins are not marked sold).</p></div>`;
 
   // Identical parts: same type, make, model and key spec.
@@ -654,7 +628,6 @@ function viewHwFleet(d) {
       </div>
       <span class="count">${list.length} items (${ram.length} RAM)</span>
     </div>
-    ${typeLegend(d, ["Hardware", "Bulk"])}
     <div class="grid cols-3">${cards}</div>
     ${gtable}`;
 }
@@ -723,13 +696,6 @@ function healthCard(h) {
 
 let guideHtml = null, guideError = null, guideLoading = false;
 
-function typeCodesTable(d) {
-  const tc = d.type_codes || [];
-  if (!tc.length) return `<div class="empty">No Type codes table found on the Lists tab (columns Type code, Meaning, Used for).</div>`;
-  return `<div class="table-wrap"><table><thead><tr><th>Code</th><th>Meaning</th><th>Used for</th></tr></thead><tbody>
-    ${tc.map(t => `<tr><td><strong>${esc(t.code)}</strong></td><td>${esc(t.meaning)}</td><td>${esc(t.used_for)}</td></tr>`).join("")}</tbody></table></div>`;
-}
-
 function viewInstructions(d) {
   if (guideHtml === null) {
     if (!guideLoading && !guideError) {
@@ -743,7 +709,7 @@ function viewInstructions(d) {
     return guideError ? `<div class="card">${statusBadge("serious", "Error")} Could not load the instructions: ${esc(guideError)}</div>`
       : `<p class="muted pad">Loading…</p>`;
   }
-  return guideHtml.replace("<!--TYPE_CODES-->", typeCodesTable(d));
+  return guideHtml;
 }
 
 /* ---------------- drawer ---------------- */
@@ -762,14 +728,14 @@ function openHardwareDrawer(h) {
   $("#drawer-title").innerHTML = `<h2>${esc(h.id)} · ${esc([h.make, h.model].filter(Boolean).join(" ") || "Unknown model")}</h2>
     <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${h.is_sold ? `<span class="badge sold">Sold</span>` : `<span class="badge">In stock</span>`}
-      ${h.type ? `<span class="badge" title="${esc(typeMeaning(h.type) || "")}">${esc(h.type)}</span>` : ""}
+      ${h.type ? `<span class="badge">${typeCell(h.type)}</span>` : ""}
       ${h.condition ? `<span class="badge">${esc(h.condition)}</span>` : ""}
     </div>`;
   const kv = pairs => `<dl class="kv">${pairs.filter(([, v]) => v !== null && v !== undefined && v !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`;
   let html = "";
   if (h.notes) html += `<div class="note">${esc(h.notes)}</div>`;
   html += `<h3>Items tab (row ${esc(h.row)})</h3>` + kv([
-    ["Asset ID", esc(h.asset_id)], ["Serial", esc(h.serial)], ["Type", typeCell(h.type) + (typeMeaning(h.type) ? ` <span class="dim small">${esc(typeMeaning(h.type))}</span>` : "")], ["Make", esc(h.make)],
+    ["Asset ID", esc(h.asset_id)], ["Serial", esc(h.serial)], ["Type", typeCell(h.type)], ["Make", esc(h.make)],
     ["Model", esc(h.model)], ["Key spec", esc(h.key_spec)], ["RAM kind", esc(h.ram_group)], ["Condition", esc(h.condition)],
     ...Object.entries(h.extra || {}).map(([k, v]) => [k, esc(v)]),
   ]);
@@ -814,7 +780,7 @@ function openDrawer(id) {
     <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
       ${c.is_sold ? `<span class="badge sold">Sold</span>` : `<span class="badge">In stock</span>`}
       ${c.status === "OK" ? statusBadge("good", "Status OK") : statusBadge(c.source === "master-only" ? "info" : "warning", c.status || "No status")}
-      ${c.type ? `<span class="badge" title="${esc(typeMeaning(c.type) || "")}">${esc(c.type)}</span>` : ""}
+      ${c.type ? `<span class="badge">${typeCell(c.type)}</span>` : ""}
       ${c.source === "master-only" ? `<span class="badge">Master tab only, not scanned</span>` : ""}
     </div>`;
 
@@ -1007,16 +973,10 @@ document.addEventListener("keydown", e => {
 
 window.addEventListener("hashchange", route);
 
-// Tooltip + line-chart crosshair.
+// Pop-up for type codes (the only elements with data-tip).
 const tip = $("#tip");
 document.addEventListener("mousemove", e => {
   const el = e.target.closest && e.target.closest("[data-tip]");
-  const svg = e.target.closest && e.target.closest(".linechart svg");
-  if (svg) {
-    const cross = svg.querySelector(".cross");
-    if (el && el.dataset.cross) { cross.setAttribute("x1", el.dataset.cross); cross.setAttribute("x2", el.dataset.cross); cross.setAttribute("visibility", "visible"); }
-    else cross.setAttribute("visibility", "hidden");
-  }
   if (!el) { tip.hidden = true; return; }
   tip.textContent = el.dataset.tip;
   tip.hidden = false;
