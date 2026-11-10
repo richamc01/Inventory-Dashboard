@@ -471,3 +471,31 @@ def test_instructions_page(fx):
     jumps = set(re.findall(r'data-jump="([^"]+)"', html))
     assert jumps and jumps <= ids, jumps - ids
     assert html.count("<div") == html.count("</div>")
+
+
+# ---- Final statuses -----------------------------------------------------------
+
+def test_final_status_not_flagged(tmp_path):
+    import openpyxl
+    path = build(str(tmp_path))
+    wb = openpyxl.load_workbook(path)
+    ms = wb["Master"]
+    for r in range(2, ms.max_row + 1):
+        if ms.cell(r, 1).value == "AIO-004":
+            ms.cell(r, 5).value = "DEAD"          # master-only machine, final
+        if ms.cell(r, 1).value == "DT-002":
+            ms.cell(r, 5).value = "BIOS-PW"       # scanned machine, final
+        if ms.cell(r, 1).value == "DT-003":
+            ms.cell(r, 5).value = "NO-POST"       # not final: still flagged
+    wb.save(path)
+    s = build_snapshot(path, None, baseline=None)
+    flagged = {(a["kind"], a["asset_id"]) for a in s["attention"]}
+    assert ("Not scanned", "AIO-004") not in flagged
+    assert ("Master status DEAD", "AIO-004") not in flagged
+    assert ("Master status BIOS-PW", "DT-002") not in flagged
+    assert ("Master status NO-POST", "DT-003") in flagged
+    # Still in inventory, with its final status.
+    aio = next(c for c in s["computers"] if c["asset_id"] == "AIO-004")
+    assert aio["final_status"] == "DEAD" and aio["status"] == "DEAD" and not aio["is_sold"]
+    assert next(c for c in s["computers"] if c["asset_id"] == "DT-002")["final_status"] == "BIOS-PW"
+    assert s["kpis"]["machines_total"] == 6

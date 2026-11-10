@@ -511,6 +511,15 @@ def build_listings(listing_rows, computers, items, sold_upper, sale_by_upper,
 
 TYPE_CODE_HEADERS = ("Type code", "Meaning", "Used for")
 
+# Master status codes that are a final outcome (workflow section 8, Triage):
+# the machine has been dealt with, so it is not listed under Needs attention.
+FINAL_STATUSES = {"DEAD", "BIOS-PW"}
+
+
+def final_status(master_row):
+    code = str((master_row or {}).get("Status code") or "").strip().upper()
+    return code if code in FINAL_STATUSES else None
+
 COMPUTER_FORMULA_COLS = ["win11_override", "manual_notes", "win11_effective", "ram_mb_effective", "sold"]
 SALES_FORMULA_COLS = ["Type", "Model", "Price used", "Fees used", "Shipping used", "Net",
                       "Date used", "Platform used", "Machines in order", "Check"]
@@ -713,6 +722,7 @@ def _build(wb, wbf, path, raw_dir):
             "tpm_visible": tpm.upper().startswith("TPM VISIBLE"),
             "has_drive": bool(c.get("drives")),
             "is_sold": bool(sold),
+            "final_status": final_status(m),
             "master": m,
             "sale": sale_by_id.get(aid),
             "scan_files": scans.get(aid, []),
@@ -732,7 +742,8 @@ def _build(wb, wbf, path, raw_dir):
             "model": m.get("Model"), "status": m.get("Status code") or "NOT SCANNED",
             "manual_notes": m.get("Notes"), "win11_eff": m.get("Win11 override"),
             "cpu_short": None, "ram_gb": None, "tpm_visible": None, "has_drive": None,
-            "is_sold": str(aid).upper() in sold_ids_upper, "master": m, "sale": sale_by_id.get(aid),
+            "is_sold": str(aid).upper() in sold_ids_upper, "final_status": final_status(m),
+            "master": m, "sale": sale_by_id.get(aid),
             "scan_files": scans.get(aid, []), "source": "master-only",
         })
     out_comp.sort(key=lambda r: natural_key(r["asset_id"]))
@@ -871,6 +882,8 @@ def _build(wb, wbf, path, raw_dir):
                               "text": f"Sales row check says {s['check']}."})
     for c in out_comp:
         if c["source"] == "master-only":
+            if c["final_status"]:
+                continue
             attention.append({"level": "warning", "kind": "Not scanned",
                               "asset_id": c["asset_id"],
                               "text": "On the Master tab but has no scan row. "
@@ -907,7 +920,7 @@ def _build(wb, wbf, path, raw_dir):
                                   "tabs. Open the workbook in Excel and save it."})
     for m in master:
         code = m.get("Status code")
-        if code and code != "OK":
+        if code and code != "OK" and not final_status(m):
             attention.append({"level": "warning", "kind": f"Master status {code}",
                               "asset_id": m["Asset ID"], "text": m.get("Notes") or ""})
 

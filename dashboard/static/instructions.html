@@ -110,6 +110,7 @@
     <li><strong>G Win11 override:</strong> pick a code only if you checked the BIOS (table below).</li>
     <li><strong>H Notes:</strong> anything worth knowing. These show on the Computers tab (column V) and in the dashboard.</li>
   </ol>
+  <div class="tip"><strong>Final statuses:</strong> once you've done all you can with a machine, set column E to <code>DEAD</code> or <code>BIOS-PW</code>. It stops showing under Needs attention, but stays in Computer Inventory, the counts, Listings and Sales like any other machine. To see these machines, pick <strong>Final status (DEAD, BIOS-PW)</strong> in Computer Inventory's status filter.</div>
   <div class="tip"><strong>Borrowed RAM:</strong> if a machine was scanned with a test DIMM that you then removed, write <code>TEST DIMM USED, real RAM = none</code> in column H. The Computers tab then counts its RAM as 0.</div>
   <h3>Status codes (column E)</h3>
   <div class="table-wrap"><table>
@@ -120,9 +121,9 @@
       <tr><td><code>NO-RAM</code></td><td>Fans spin but no picture, and every DIMM slot is empty.</td></tr>
       <tr><td><code>NO-POST</code></td><td>Fans spin but no picture, or beeps/light pattern, with RAM installed.</td></tr>
       <tr><td><code>BOOT-BLOCKED</code></td><td>Won't boot from the USB stick.</td></tr>
-      <tr><td><code>BIOS-PW</code></td><td>Password prompt at power-on or in BIOS setup.</td></tr>
+      <tr><td><code>BIOS-PW</code></td><td>Password prompt at power-on or in BIOS setup. <strong>Final:</strong> not listed under Needs attention.</td></tr>
       <tr><td><code>LIVE-FAIL</code></td><td>Ubuntu hangs, or the machine shuts off during the scan.</td></tr>
-      <tr><td><code>DEAD</code></td><td>Still fails after triage.</td></tr>
+      <tr><td><code>DEAD</code></td><td>Still fails after triage (for example, sell for parts). <strong>Final:</strong> not listed under Needs attention.</td></tr>
       <tr><td><code>TODO</code></td><td>Work still to do on this machine (say what in Notes).</td></tr>
     </tbody>
   </table></div>
@@ -332,8 +333,8 @@
     <thead><tr><th>Line</th><th>What to do</th></tr></thead>
     <tbody>
       <tr><td>Sale check</td><td>Fix the Sales row (see <a href="" data-jump="g-checks">Sale check messages</a>).</td></tr>
-      <tr><td>Status CHECK / Master status &hellip;</td><td>The machine has a problem or a TODO. Handle it, then set its status to OK on the Master tab.</td></tr>
-      <tr><td>Not scanned</td><td>On the Master tab but never scanned. Scan it, or leave it if it can't be.</td></tr>
+      <tr><td>Status CHECK / Master status &hellip;</td><td>The machine has a problem or a TODO. Handle it, then set its status on the Master tab to <code>OK</code>, or to <code>DEAD</code> or <code>BIOS-PW</code> if that's the final outcome.</td></tr>
+      <tr><td>Not scanned</td><td>On the Master tab but never scanned. Scan it, or if it can't be, set its Master status to <code>DEAD</code> or <code>BIOS-PW</code>.</td></tr>
       <tr><td>Note mentions the scan row</td><td>A Master note refers to the scan. Check it still applies after a re-scan, and update the note.</td></tr>
       <tr><td>Formula missing in Excel</td><td>Copy the formula down from a row above on the tab named.</td></tr>
       <tr><td>Saved values out of date</td><td>Open the workbook in Excel, save, close.</td></tr>

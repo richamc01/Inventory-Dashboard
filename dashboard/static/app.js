@@ -418,7 +418,7 @@ function inventoryRows(d) {
   return d.computers.filter(c =>
     (!f.type || c.type === f.type) &&
     (!f.model || c.model === f.model) &&
-    (!f.status || c.status === f.status) &&
+    (!f.status || (f.status === "__final" ? !!c.final_status : c.status === f.status)) &&
     (!f.win11 || c.win11_eff === f.win11) &&
     (f.sold === "" || (f.sold === "sold" ? c.is_sold : !c.is_sold)) &&
     (f.drive === "" || (f.drive === "yes" ? c.has_drive === true : c.has_drive !== true)) &&
@@ -460,7 +460,7 @@ function viewInventory(d) {
       <select id="i-type">${options(uniq(all.map(c => c.type)), f.type, "All types")}</select>
       <select id="i-model">${options(uniq(all.map(c => c.model)), f.model, "All models")}</select>
       <select id="i-win11">${options(uniq(all.map(c => c.win11_eff)), f.win11, "Win11: any")}</select>
-      <select id="i-status">${options(uniq(all.map(c => c.status)), f.status, "Any status")}</select>
+      <select id="i-status">${options(uniq(all.map(c => c.status)), f.status, "Any status")}<option value="__final"${f.status === "__final" ? " selected" : ""}>Final status (DEAD, BIOS-PW)</option></select>
       <select id="i-drive"><option value="">Drive: any</option><option value="yes"${f.drive === "yes" ? " selected" : ""}>Has drive</option><option value="no"${f.drive === "no" ? " selected" : ""}>No drive</option></select>
       <button type="button" id="i-reset">Reset</button>
       <span class="count">${rows.length} of ${all.length} machines</span>
@@ -782,6 +782,7 @@ function openDrawer(id) {
       ${c.status === "OK" ? statusBadge("good", "Status OK") : statusBadge(c.source === "master-only" ? "info" : "warning", c.status || "No status")}
       ${c.type ? `<span class="badge">${typeCell(c.type)}</span>` : ""}
       ${c.source === "master-only" ? `<span class="badge">Master tab only, not scanned</span>` : ""}
+      ${c.final_status && c.source === "scan" ? `<span class="badge">Master status ${esc(c.final_status)} (final)</span>` : ""}
     </div>`;
 
   const kv = pairs => `<dl class="kv">${pairs.filter(([, v]) => v !== null && v !== undefined && v !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`;
