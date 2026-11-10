@@ -1,0 +1,13 @@
+# Optional: only for UnRAID's Compose Manager plugin or plain Docker Compose.
+# The README's docker run command does the same thing without the plugin.
+services:
+  inventory-dashboard:
+    build: .
+    image: inventory-dashboard:latest
+    container_name: inventory-dashboard
+    restart: unless-stopped
+    user: "99:100"
+    ports:
+      - "8095:8000"
+    volumes:
+      - "/mnt/user/Nextcloud/richamc01/files/Documents/Personal Assets/Home Network/Inventory:/data:ro"

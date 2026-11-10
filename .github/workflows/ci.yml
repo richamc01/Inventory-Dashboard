@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t inventory-dashboard:ci .
+      - name: Make a fake workbook
+        run: |
+          pip install openpyxl==3.1.5
+          python tests/make_fixture.py "$RUNNER_TEMP/data"
+          chmod -R a+rX "$RUNNER_TEMP/data"
+      - name: Run container the same way as on UnRAID
+        run: |
+          docker run -d --name dash --user 99:100 -p 8095:8000 \
+            -v "$RUNNER_TEMP/data:/data:ro" inventory-dashboard:ci
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8095/healthz && break; sleep 1; done
+      - name: Smoke test
+        run: |
+          set -e
+          curl -fs http://127.0.0.1:8095/ | grep -q "Hardware Lot"
+          curl -fs http://127.0.0.1:8095/static/app.js > /dev/null
+          curl -fs http://127.0.0.1:8095/api/data | python -c "import json,sys; d=json.load(sys.stdin); assert d['kpis']['units_sold']==3, d['kpis']; assert d['meta']['error'] is None; print('kpis ok', d['kpis'])"
+          curl -fs "http://127.0.0.1:8095/api/raw/DT-001" | grep -q "asset_id=DT-001"
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8095/api/raw/DT-001?file=../Hardware%20Inventory.xlsx')" = "404"
+      - name: Docker health check reports healthy
+        run: |
+          for i in $(seq 1 24); do
+            s="$(docker inspect --format '{{.State.Health.Status}}' dash)"; echo "$s"
+            [ "$s" = "healthy" ] && exit 0
+            sleep 5
+          done
+          exit 1
+      - name: deploy.sh works end to end
+        run: |
+          DATA_DIR="$RUNNER_TEMP/data" HOST_PORT=8096 bash deploy.sh
+          curl -fs http://127.0.0.1:8096/api/status
+          # Second run replaces the container cleanly.
+          DATA_DIR="$RUNNER_TEMP/data" HOST_PORT=8096 bash deploy.sh
+      - name: Logs
+        if: always()
+        run: |
+          docker logs dash || true
+          docker logs inventory-dashboard || true

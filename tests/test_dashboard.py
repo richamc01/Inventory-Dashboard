@@ -1,0 +1,219 @@
+import os
+import shutil
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from dashboard.app import create_app  # noqa: E402
+from dashboard.workbook import build_snapshot, cpu_short, ram_group  # noqa: E402
+from make_fixture import build  # noqa: E402
+
+
+@pytest.fixture()
+def fx(tmp_path):
+    path = build(str(tmp_path))
+    return path, str(tmp_path / "inventory-raw")
+
+
+@pytest.fixture()
+def snap(fx):
+    return build_snapshot(*fx)
+
+
+def comp(snap, aid):
+    return next(c for c in snap["computers"] if c["asset_id"] == aid)
+
+
+# ---- workbook logic --------------------------------------------------------
+
+def test_cpu_short():
+    assert cpu_short("Intel(R) Core(TM) i5-6500 CPU @ 3.20GHz") == "i5-6500"
+    assert cpu_short("Intel(R) Xeon(R) CPU E5-2430 v2 @ 2.50GHz") == "Xeon E5-2430 v2"
+    assert cpu_short(None) is None
+
+
+def test_ram_group():
+    assert ram_group("DIMM 8GB PC3L-12800U 2Rx8") == "DIMM 8GB DDR3L"
+    assert ram_group("DIMM 16GB PC3L-12800R ECC 2Rx4") == "DIMM 16GB DDR3L ECC"
+    assert ram_group("SODIMM 4GB DDR4-2400") == "SODIMM 4GB DDR4"
+
+
+def test_counts(snap):
+    k = snap["kpis"]
+    assert k["machines_scanned"] == 5
+    assert k["machines_total"] == 6          # + AIO-004 from Master only
+    assert k["units_sold"] == 3
+    assert k["machines_unsold"] == 3          # DT-003, DT-010, AIO-004
+    assert k["lot_price"] == 500
+
+
+def test_sales_math_from_formulas(snap):
+    s = {x["asset_id"]: x for x in snap["sales"]}
+    # Single sale with a fee.
+    assert s["DT-001"]["price"] == 100 and s["DT-001"]["fees"] == 10 and s["DT-001"]["net"] == 90
+    # Order total 100 split evenly over two machines; second row inherits date/platform.
+    assert s["DT-002"]["price"] == 50 and s["SV-001"]["price"] == 50
+    assert s["SV-001"]["date"] == "2026-01-07"
+    assert s["SV-001"]["platform"] == "Facebook Marketplace"
+    assert s["SV-001"]["payment"] == "Cash"
+    assert s["SV-001"]["machines_in_order"] == 2
+    assert all(x["check"] == "OK" for x in snap["sales"])
+    k = snap["kpis"]
+    assert k["gross"] == 200 and k["net"] == 190 and k["orders"] == 2
+    assert k["recovered"] == pytest.approx(0.38)
+    assert k["profit"] == -310
+    assert k["break_even_units"] == 5        # 310 / 63.33 -> 5
+
+
+def test_cross_check_matches(snap):
+    assert snap["meta"]["checks"] and all(c["ok"] for c in snap["meta"]["checks"])
+
+
+def test_master_lookups_computed(snap):
+    assert comp(snap, "DT-002")["win11_eff"] == "YES-IF-TPM-ON"
+    assert comp(snap, "DT-002")["manual_notes"] == "Fake note."
+    # Formula wiped in Excel, but the dashboard still finds the Master note.
+    assert comp(snap, "DT-003")["manual_notes"] == "Wiped-formula row note."
+    # "real RAM = none" -> effective RAM 0.
+    assert comp(snap, "DT-010")["ram_gb"] == 0
+    assert comp(snap, "DT-001")["is_sold"] and not comp(snap, "DT-003")["is_sold"]
+
+
+def test_master_only_machine(snap):
+    a = comp(snap, "AIO-004")
+    assert a["source"] == "master-only" and a["status"] == "NOT SCANNED"
+
+
+def test_attention(snap):
+    kinds = {(a["asset_id"], a["kind"]) for a in snap["attention"]}
+    assert ("DT-003", "Formula missing in Excel") in kinds
+    assert ("AIO-004", "Not scanned") in kinds
+    assert ("DT-010", "Status CHECK") in kinds
+
+
+def test_scan_files(snap):
+    assert comp(snap, "DT-010")["scan_files"] == ["DT-010_TAG0010.txt", "DT-010_TAG0010_120000.txt"]
+
+
+def test_items_and_bulk(snap):
+    assert len(snap["items"]) == 3 and len(snap["bulk"]) == 1
+    assert {"label": "DIMM 16GB DDR3L ECC", "count": 1} in snap["ram_groups"]
+
+
+def test_sale_problem_flagged(tmp_path):
+    import openpyxl
+    path = build(str(tmp_path))
+    wb = openpyxl.load_workbook(path)
+    wb["Sales"].append([None, "DT-001", None, None, None, 5])   # duplicate + no date
+    wb.save(path)
+    s = build_snapshot(path, None)
+    checks = [x["check"] for x in s["sales"] if x["asset_id"] == "DT-001"]
+    assert checks == ["DUPLICATE", "DUPLICATE"]
+    assert any(a["kind"] == "Sale check" for a in s["attention"])
+
+
+def test_missing_lot_price_warns(tmp_path):
+    import openpyxl
+    path = build(str(tmp_path))
+    wb = openpyxl.load_workbook(path)
+    wb["Selling Dashboard"]["B3"] = None
+    wb.save(path)
+    s = build_snapshot(path, None)
+    assert s["kpis"]["lot_price"] is None and s["kpis"]["profit"] is None
+    assert any("Lot purchase price" in w for w in s["meta"]["warnings"])
+
+
+# ---- HTTP ------------------------------------------------------------------
+
+@pytest.fixture()
+def client(fx):
+    app = create_app(fx[0], fx[1])
+    return app.test_client()
+
+
+def test_pages(client):
+    assert client.get("/").status_code == 200
+    for f in ("app.js", "style.css"):
+        assert client.get(f"/static/{f}").status_code == 200
+    assert client.get("/healthz").data == b"ok\n"
+
+
+def test_api_data(client):
+    r = client.get("/api/data")
+    assert r.status_code == 200 and r.headers["Cache-Control"] == "no-store"
+    j = r.get_json()
+    assert j["kpis"]["units_sold"] == 3 and j["meta"]["error"] is None
+
+
+def test_raw_file(client):
+    r = client.get("/api/raw/DT-001")
+    assert r.status_code == 200 and b"asset_id=DT-001" in r.data
+    r = client.get("/api/raw/DT-010?file=DT-010_TAG0010_120000.txt")
+    assert b"rescan=yes" in r.data
+
+
+@pytest.mark.parametrize("url", [
+    "/api/raw/DT-001?file=../Hardware%20Inventory.xlsx",
+    "/api/raw/DT-001?file=/etc/passwd",
+    "/api/raw/AIO-004",
+    "/api/raw/NOPE",
+    "/static/../app.py",
+])
+def test_no_path_escape(client, url):
+    assert client.get(url).status_code == 404
+
+
+def test_missing_workbook_503(tmp_path):
+    c = create_app(str(tmp_path / "missing.xlsx")).test_client()
+    r = c.get("/api/data")
+    assert r.status_code == 503 and "Cannot open the workbook" in r.get_json()["error"]
+    assert c.get("/api/status").get_json()["ok"] is False
+    assert c.get("/healthz").status_code == 200
+
+
+def test_bad_update_keeps_last_good(fx, monkeypatch):
+    import dashboard.workbook as wbmod
+    monkeypatch.setattr(wbmod, "RETRY_DELAY_S", 0)
+    app = create_app(*fx)
+    c = app.test_client()
+    assert c.get("/api/data").status_code == 200
+    # Simulate a half-written file.
+    with open(fx[0], "r+b") as f:
+        f.truncate(1000)
+    r = c.get("/api/data")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["kpis"]["units_sold"] == 3 and "Could not read" in j["meta"]["error"]
+    # Restore -> recovers.
+    build(os.path.dirname(fx[0]))
+    j = c.get("/api/data").get_json()
+    assert j["meta"]["error"] is None
+
+
+def test_reloads_when_file_changes(fx):
+    import openpyxl
+    c = create_app(*fx).test_client()
+    assert c.get("/api/data").get_json()["kpis"]["units_sold"] == 3
+    wb = openpyxl.load_workbook(fx[0])
+    wb["Sales"].append(["2026-01-09", "DT-003", None, None, None, 40])
+    wb.save(fx[0])
+    os.utime(fx[0], (1, 2_000_000_000))   # force a different mtime
+    j = c.get("/api/data").get_json()
+    assert j["kpis"]["units_sold"] == 4
+
+
+REAL = os.environ.get("REAL_WORKBOOK")
+
+
+@pytest.mark.skipif(not REAL, reason="set REAL_WORKBOOK to test against the real file")
+def test_real_workbook():
+    s = build_snapshot(REAL, os.path.join(os.path.dirname(REAL), "inventory-raw"))
+    assert s["meta"]["checks"] and all(c["ok"] for c in s["meta"]["checks"]), s["meta"]["checks"]
+    assert not any(a["kind"] == "Saved values out of date" for a in s["attention"])
+    assert s["kpis"]["machines_scanned"] > 0
+    for c in s["computers"]:
+        if c["source"] == "scan":
+            assert c["scan_files"], c["asset_id"]

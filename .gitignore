@@ -1,0 +1,11 @@
+# Never commit inventory data.
+*.xlsx
+*.xlsm
+*.csv
+inventory-raw/
+fixture/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
